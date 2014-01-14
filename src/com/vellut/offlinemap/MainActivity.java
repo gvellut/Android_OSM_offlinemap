@@ -82,7 +82,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		restorePreferences();
 
 		init();
-		createMapView();
 		configureUI();
 	}
 
@@ -237,6 +236,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void configureUI() {
+		createMapView();
+		
 		if (isFirstTimeRun) {
 			isFirstTimeRun = false;
 
@@ -269,7 +270,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-		mapAnnotations.clear();
+		/*mapAnnotations.clear();
 
 		// FIXME dummy annotation
 		MapAnnotation mapAnnotation1 = new MapAnnotation();
@@ -277,7 +278,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapAnnotation1.longitude = Utils.INITIAL_LON;
 		mapAnnotation1.title = "Annotation 1";
 		mapAnnotation1.description = "Description for Annot1";
-		mapAnnotations.add(mapAnnotation1);
+		mapAnnotations.add(mapAnnotation1);*/
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
@@ -349,6 +350,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 						Utils.EXTRA_TITLE);
 				editedMapAnnotation.description = data.getExtras().getString(
 						Utils.EXTRA_DESCRIPTION);
+				updateBubbleForMapAnnotation(editedMapAnnotation);
 			} else {
 				if (isCreation) {
 					mapAnnotations.remove(editedMapAnnotation);
@@ -376,15 +378,16 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void showBubbleForMapAnnotationInteractive(int index) {
 		MapAnnotation mapAnnotation = mapAnnotations.get(index);
-		showBubbleForMapAnnotation(mapAnnotation);
-	}
-
-	private void showBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
 		if (currentMapAnnotationForBubble == mapAnnotation) {
 			// toggle
 			clearBubble();
 			return;
 		}
+		
+		showBubbleForMapAnnotation(mapAnnotation);
+	}
+
+	private void showBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
 
 		currentMapAnnotationForBubble = mapAnnotation;
 
@@ -411,6 +414,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		bubble.setPoint(gp);
 		bubbleTextOverlay.addItem(bubble);
 		mapView.getOverlays().add(bubbleTextOverlay);
+	}
+	
+	private void updateBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
+		if (currentMapAnnotationForBubble == mapAnnotation) {
+			showBubbleForMapAnnotation(mapAnnotation);
+		}
 	}
 
 	private void editMapAnnotation(int index) {
