@@ -15,5 +15,7 @@
     <string name="map_annotation_description_hint">Details</string>
     
     <string name="error_empty_title">The title must not be empty</string>
+    
+    <string name="welcome">Welcome!</string>
 
 </resources>

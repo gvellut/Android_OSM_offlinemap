@@ -15,6 +15,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.util.Log;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.widget.TextView;
@@ -36,8 +37,14 @@ public class Utils {
 
 	public static final String PREF_MAP_DATA = "pref_map_data";
 	public static final String PREF_SAVED_LOCATIONS = "pref_saved_locations";
+	public static final String PREF_IS_FIRST_TIME_RUN = "pref_is_first_time_run";
+	
 
-	public static final int CODE_MAP_ANNOTATION_EDIT = 150;
+	public static final int CODE_MAP_ANNOTATION_EDIT_REQUEST = 150;
+	public static final int CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST = 151;
+
+	public static final int[] MAP_ANNOTATION_COLORS = { Color.BLUE, Color.RED,
+			Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA };
 
 	public static Bitmap viewToBitmap(Context c, View view) {
 		view.measure(MeasureSpec.getSize(view.getMeasuredWidth()),
@@ -69,7 +76,6 @@ public class Utils {
 
 		return bitmap;
 	}
-	
 
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	public static final void setBackground(View view, Drawable background) {
@@ -79,12 +85,14 @@ public class Utils {
 			view.setBackgroundDrawable(background);
 		}
 	}
-	
+
 	public static OverlayItem getItem(ArrayItemizedOverlay overlays, int index) {
 		try {
-			Field itemsField = ArrayItemizedOverlay.class.getDeclaredField("overlayItems");
+			Field itemsField = ArrayItemizedOverlay.class
+					.getDeclaredField("overlayItems");
 			itemsField.setAccessible(true);
-			List<OverlayItem> items = (List<OverlayItem>) itemsField.get(overlays);
+			List<OverlayItem> items = (List<OverlayItem>) itemsField
+					.get(overlays);
 			return items.get(index);
 		} catch (NoSuchFieldException e) {
 			e.printStackTrace();
@@ -93,7 +101,7 @@ public class Utils {
 		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
 		}
-		
+
 		return null;
 	}
 
@@ -104,5 +112,9 @@ public class Utils {
 				android.R.id.message);
 		textView.setTextColor(Color.WHITE);
 		toast.show();
+	}
+	
+	public static void d(String text) {
+		Log.d(TAG, text);
 	}
 }

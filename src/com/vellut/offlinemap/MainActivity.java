@@ -1,5 +1,7 @@
 package com.vellut.offlinemap;
 
+import static com.vellut.offlinemap.Utils.d;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -14,7 +16,10 @@ import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -67,6 +72,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private MapAnnotation currentMapAnnotationForBubble;
 
+	private boolean isFirstTimeRun;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -76,7 +83,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		init();
 		createMapView();
-		configureMapView();
+		configureUI();
 	}
 
 	@Override
@@ -143,11 +150,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void init() {
-		Log.d(Utils.TAG, getApplicationContext().getPackageName());
+		d(getApplicationContext().getPackageName());
 		String mapName = Utils.MAP_NAME;
 		mapFile = new File(getExternalCacheDir(), mapName);
 		if (!mapFile.exists() || hasNewVersion(mapFile)) {
-			Log.d(Utils.TAG, "Installing map");
+			d("Installing map");
 			createFileFromInputStream(mapFile, mapName);
 		}
 
@@ -185,6 +192,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		} else {
 			mapAnnotations = new ArrayList<MapAnnotation>();
 		}
+
+		isFirstTimeRun = settings
+				.getBoolean(Utils.PREF_IS_FIRST_TIME_RUN, true);
 	}
 
 	public void savePreferences() {
@@ -200,6 +210,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}.getType();
 		editor.putString(Utils.PREF_SAVED_LOCATIONS,
 				serializeToString(mapAnnotations, type));
+
+		editor.putBoolean(Utils.PREF_IS_FIRST_TIME_RUN, isFirstTimeRun);
 
 		editor.apply();
 	}
@@ -224,15 +236,25 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		setContentView(mapView);
 	}
 
-	private void configureMapView() {
-		if (mapData.mapZoom == 0) {
+	private void configureUI() {
+		if (isFirstTimeRun) {
+			isFirstTimeRun = false;
+
+			showWelcomeDialog();
+
 			// Zoom on Tokyo
 			zoomToInitialPosition();
 		} else {
-			// mapData is valid: Zoom on previous position
-			mapView.getController().setCenter(
-					new GeoPoint(mapData.mapLatitude, mapData.mapLongitude));
-			mapView.getController().setZoom(mapData.mapZoom);
+			if (mapData.mapZoom == 0) {
+				// in case there is a bug...
+				zoomToInitialPosition();
+			} else {
+				// mapData is valid: Zoom on previous position
+				GeoPoint center = new GeoPoint(mapData.mapLatitude,
+						mapData.mapLongitude);
+				mapView.getController().setCenter(center);
+				mapView.getController().setZoom(mapData.mapZoom);
+			}
 		}
 
 		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
@@ -267,13 +289,13 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		return new ArrayItemizedOverlay(defaultMarker, recenter) {
 			@Override
 			protected boolean onTap(int index) {
-				MainActivity.this.onMapAnnotationTap(index);
+				MainActivity.this.showBubbleForMapAnnotationInteractive(index);
 				return true;
 			}
 
 			@Override
 			protected boolean onLongPress(int index) {
-				MainActivity.this.onMapAnnotationLongPress(index);
+				MainActivity.this.editMapAnnotation(index);
 				return true;
 			}
 
@@ -284,20 +306,21 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				return checkItemHit(geoPoint, mapView, EventType.TAP);
 			}
 
-			@Override 
+			@Override
 			public boolean onLongPress(GeoPoint geoPoint, MapView mapView) {
-				boolean hasHit = checkItemHit(geoPoint, mapView, EventType.LONG_PRESS);
-				if(!hasHit) {
-					addMarkerFromLongTap(geoPoint);
+				boolean hasHit = checkItemHit(geoPoint, mapView,
+						EventType.LONG_PRESS);
+				if (!hasHit) {
+					addMapAnnotationInteractive(geoPoint);
 				}
 				// Note: No other layer can handle double tap
 				return true;
 			}
-			
+
 		};
 	}
 
-	private void addMarkerFromLongTap(GeoPoint geoPoint) {
+	private void addMapAnnotationInteractive(GeoPoint geoPoint) {
 		editedMapAnnotation = new MapAnnotation();
 		editedMapAnnotation.latitude = geoPoint.getLatitude();
 		editedMapAnnotation.longitude = geoPoint.getLongitude();
@@ -305,8 +328,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		editedOverlayItem = addMarker(editedMapAnnotation);
 
 		isCreation = true;
-		
-		launchMapAnnotationEdit();
+
+		launchMapAnnotationEditActivity();
 	}
 
 	private OverlayItem addMarker(MapAnnotation mapAnnotation) {
@@ -320,7 +343,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
-		case Utils.CODE_MAP_ANNOTATION_EDIT:
+		case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
 			if (resultCode == RESULT_OK) {
 				editedMapAnnotation.title = data.getExtras().getString(
 						Utils.EXTRA_TITLE);
@@ -338,39 +361,31 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			isCreation = false;
 
 			break;
+
+		case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
+			if (resultCode == RESULT_OK) {
+				d("PlayServices Resolved");
+			} else {
+				d("PlayServices Not Resolved");
+			}
+			break;
 		}
+
 		super.onActivityResult(requestCode, resultCode, data);
 	}
 
-	private void onMapAnnotationTap(int index) {
+	private void showBubbleForMapAnnotationInteractive(int index) {
 		MapAnnotation mapAnnotation = mapAnnotations.get(index);
+		showBubbleForMapAnnotation(mapAnnotation);
+	}
+
+	private void showBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
 		if (currentMapAnnotationForBubble == mapAnnotation) {
 			// toggle
 			clearBubble();
 			return;
 		}
 
-		addBubble(mapAnnotation);
-	}
-	
-	private void onMapAnnotationLongPress(int index) {
-		editedMapAnnotation =  mapAnnotations.get(index);
-		editedOverlayItem = Utils.getItem(mapAnnotationsOverlay, index);
-		isCreation = false;
-
-		launchMapAnnotationEdit();
-	}
-	
-	private void launchMapAnnotationEdit() {
-		Intent intent = new Intent();
-		intent.setClass(this, MapAnnotationEditActivity.class);
-		intent.putExtra(Utils.EXTRA_IS_NEW, isCreation);
-		intent.putExtra(Utils.EXTRA_TITLE, editedMapAnnotation.title);
-		intent.putExtra(Utils.EXTRA_DESCRIPTION, editedMapAnnotation.description);
-		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT);
-	}
-
-	private void addBubble(MapAnnotation mapAnnotation) {
 		currentMapAnnotationForBubble = mapAnnotation;
 
 		TextView bubbleView = new TextView(this);
@@ -396,6 +411,24 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		bubble.setPoint(gp);
 		bubbleTextOverlay.addItem(bubble);
 		mapView.getOverlays().add(bubbleTextOverlay);
+	}
+
+	private void editMapAnnotation(int index) {
+		editedMapAnnotation = mapAnnotations.get(index);
+		editedOverlayItem = Utils.getItem(mapAnnotationsOverlay, index);
+		isCreation = false;
+
+		launchMapAnnotationEditActivity();
+	}
+
+	private void launchMapAnnotationEditActivity() {
+		Intent intent = new Intent();
+		intent.setClass(this, MapAnnotationEditActivity.class);
+		intent.putExtra(Utils.EXTRA_IS_NEW, isCreation);
+		intent.putExtra(Utils.EXTRA_TITLE, editedMapAnnotation.title);
+		intent.putExtra(Utils.EXTRA_DESCRIPTION,
+				editedMapAnnotation.description);
+		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST);
 	}
 
 	private void clearBubble() {
@@ -443,22 +476,57 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		return true;
 	}
 
+	@Override
+	public void onConnectionFailed(ConnectionResult connectionResult) {
+		if (connectionResult.hasResolution()) {
+			try {
+				// Start an Activity that tries to resolve the error
+				connectionResult.startResolutionForResult(this,
+						Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST);
+			} catch (IntentSender.SendIntentException e) {
+				// Log the error
+				e.printStackTrace();
+			}
+		} else {
+			// If no resolution is available, display a dialog to the user with
+			// the error.
+			showGooglePlayServicesErrorDialog(connectionResult.getErrorCode());
+		}
+	}
+
 	private boolean isGooglePlayServicesConnected() {
 		// Check that Google Play services is available
 		int resultCode = GooglePlayServicesUtil
 				.isGooglePlayServicesAvailable(this);
 		// If Google Play services is available
 		if (ConnectionResult.SUCCESS == resultCode) {
-			Log.d(Utils.TAG, "Google Play services is available.");
+			d("Google Play services is available.");
 			return true;
 		} else {
+			// Google Play services was not available for some reason
+			// Display an error dialog
+			showGooglePlayServicesErrorDialog(resultCode);
 			return false;
 		}
 	}
 
-	@Override
-	public void onConnectionFailed(ConnectionResult arg0) {
+	private void showGooglePlayServicesErrorDialog(int errorCode) {
+		// Get the error dialog from Google Play services
+		Dialog errorDialog = GooglePlayServicesUtil.getErrorDialog(errorCode,
+				this, Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST);
+		errorDialog.show();
+	}
 
+	private void showOKDialog(int resourceId) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage(R.string.welcome).setPositiveButton(
+				android.R.string.ok, null);
+		// Create the AlertDialog object and return it
+		builder.create().show();
+	}
+
+	private void showWelcomeDialog() {
+		showOKDialog(R.string.welcome);
 	}
 
 	@Override
