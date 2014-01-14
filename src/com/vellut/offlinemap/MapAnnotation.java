@@ -1,7 +1,7 @@
-package com.vellut.tokyoofflinemap;
+package com.vellut.offlinemap;
 
 
-public class SavedLocation {
+public class MapAnnotation {
 	public double latitude, longitude;
 	public String title, description;
 	public int color;

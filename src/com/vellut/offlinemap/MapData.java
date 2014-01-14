@@ -1,4 +1,4 @@
-package com.vellut.tokyoofflinemap;
+package com.vellut.offlinemap;
 
 
 public class MapData {

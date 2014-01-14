@@ -8,5 +8,12 @@
     <string name="action_tokyo_view">Global Tokyo View</string>
     <string name="action_about">About</string>
     <string name="osm_copyright">Map Data © OpenStreetMap contributors</string>
+    
+    <string name="map_annotation_create">Create note</string>
+    <string name="map_annotation_edit">edit note</string>
+    <string name="map_annotation_title_hint">Title</string>
+    <string name="map_annotation_description_hint">Details</string>
+    
+    <string name="error_empty_title">The title must not be empty</string>
 
 </resources>

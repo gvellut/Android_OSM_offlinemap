@@ -1,4 +1,4 @@
-package com.vellut.tokyoofflinemap;
+package com.vellut.offlinemap;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -10,24 +10,34 @@ import java.util.ArrayList;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
+import org.mapsforge.android.maps.MapViewPosition;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
+import org.mapsforge.core.MercatorProjection;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.GestureDetector;
+import android.view.GestureDetector.SimpleOnGestureListener;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
@@ -39,16 +49,10 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.vellut.offlinemap.tokyo.R;
 
 public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OnConnectionFailedListener, LocationListener {
-	private static final String TAG = "TOM";
-	private static final String PREF_MAP_DATA = "pref_map_data";
-	private static final String PREF_SAVED_LOCATIONS = "pref_saved_locations";
-
-	private static final double INITIAL_LAT = 35.682817;
-	private static final double INITIAL_LON = 139.74678;
-	private static final byte INITIAL_ZOOM = 14;
 
 	private File mapFile;
 	private LocationClient locationClient;
@@ -56,9 +60,18 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private boolean zoomToCurrentPositionOnConnected = false;
 
 	private MapData mapData;
-	private ArrayList<SavedLocation> savedLocations;
+	private ArrayList<MapAnnotation> mapAnnotations;
+
 	private ArrayItemizedOverlay currentPositionOverlay;
-	private ArrayItemizedOverlay savedPositionsOverlay;
+	private ArrayItemizedOverlay mapAnnotationsOverlay;
+	private ArrayItemizedOverlay bubbleTextOverlay;
+
+	private OverlayItem editedOverlayItem;
+	private MapAnnotation editedMapAnnotation;
+	private boolean isCreation;
+
+	private MapAnnotation currentMapAnnotationForBubble;
+	private GestureDetector gestureDetector;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +102,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapData.mapZoom = mapView.getMapPosition().getZoomLevel();
 
 		savePreferences();
-
 	}
 
 	@Override
@@ -111,7 +123,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		case R.id.action_current_location:
 			zoomToCurrentPosition();
 			return true;
-		case R.id.action_tokyo_view:
+		case R.id.action_initial_view:
 			zoomToInitialPosition();
 			return true;
 		default:
@@ -132,18 +144,25 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void zoomToInitialPosition() {
 		mapView.getController().setCenter(
-				new GeoPoint(INITIAL_LAT, INITIAL_LON));
-		mapView.getController().setZoom(INITIAL_ZOOM);
+				new GeoPoint(Utils.INITIAL_LAT, Utils.INITIAL_LON));
+		mapView.getController().setZoom(Utils.INITIAL_ZOOM);
 	}
 
 	private void init() {
-		Log.d(TAG, getApplicationContext().getPackageName());
-		String mapName = "Tokyo.map";
+		Log.d(Utils.TAG, getApplicationContext().getPackageName());
+		String mapName = Utils.MAP_NAME;
 		mapFile = new File(getExternalCacheDir(), mapName);
 		if (!mapFile.exists() || hasNewVersion(mapFile)) {
-			Log.d(TAG, "Install map");
+			Log.d(Utils.TAG, "Installing map");
 			createFileFromInputStream(mapFile, mapName);
 		}
+
+		gestureDetector = new GestureDetector(this,
+				new SimpleOnGestureListener() {
+					public void onLongPress(MotionEvent motionEvent) {
+						addMarkerFromLongTap(motionEvent);
+					};
+				});
 
 		restorePreferences();
 	}
@@ -152,31 +171,32 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		SharedPreferences settings = PreferenceManager
 				.getDefaultSharedPreferences(this);
 
-		String sMapData = settings.getString(PREF_MAP_DATA, null);
+		String sMapData = settings.getString(Utils.PREF_MAP_DATA, null);
 		if (sMapData != null) {
 			try {
 				Type type = new TypeToken<MapData>() {
 				}.getType();
 				mapData = (MapData) deserializeFromString(sMapData, type);
 			} catch (Exception ex) {
-				Log.e(TAG, "Error getting saved MapData", ex);
+				Log.e(Utils.TAG, "Error getting saved MapData", ex);
 			}
 		} else {
 			mapData = new MapData();
 		}
 
-		String sSavedLocations = settings.getString(PREF_SAVED_LOCATIONS, null);
+		String sSavedLocations = settings.getString(Utils.PREF_SAVED_LOCATIONS,
+				null);
 		if (sMapData != null) {
 			try {
-				Type type = new TypeToken<ArrayList<SavedLocation>>() {
+				Type type = new TypeToken<ArrayList<MapAnnotation>>() {
 				}.getType();
-				savedLocations = (ArrayList<SavedLocation>) deserializeFromString(
+				mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
 						sSavedLocations, type);
 			} catch (Exception ex) {
-				Log.e(TAG, "Error getting saved SavedLocations", ex);
+				Log.e(Utils.TAG, "Error getting saved SavedLocations", ex);
 			}
 		} else {
-			savedLocations = new ArrayList<SavedLocation>();
+			mapAnnotations = new ArrayList<MapAnnotation>();
 		}
 	}
 
@@ -187,11 +207,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		Type type = new TypeToken<MapData>() {
 		}.getType();
-		editor.putString(PREF_MAP_DATA, serializeToString(mapData, type));
-		
-		type = new TypeToken<ArrayList<SavedLocation>>() {
+		editor.putString(Utils.PREF_MAP_DATA, serializeToString(mapData, type));
+
+		type = new TypeToken<ArrayList<MapAnnotation>>() {
 		}.getType();
-		editor.putString(PREF_SAVED_LOCATIONS, serializeToString(savedLocations, type));
+		editor.putString(Utils.PREF_SAVED_LOCATIONS,
+				serializeToString(mapAnnotations, type));
 
 		editor.apply();
 	}
@@ -209,7 +230,20 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void createMapView() {
-		mapView = new CopyrightMapView(this);
+		mapView = new CopyrightMapView(this) {
+			@Override
+			public boolean onTouchEvent(MotionEvent motionEvent) {
+				if (gestureDetector.onTouchEvent(motionEvent)) {
+					return true;
+				}
+				if (motionEvent.getAction() != MotionEvent.ACTION_MOVE) {
+					gestureDetector.setIsLongpressEnabled(true);
+				}
+
+				return super.onTouchEvent(motionEvent);
+			}
+		};
+
 		mapView.setClickable(true);
 		mapView.setBuiltInZoomControls(false);
 		mapView.setMapFile(mapFile);
@@ -232,14 +266,164 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		currentPositionOverlay = new ArrayItemizedOverlay(currentPositionMarker);
 		mapView.getOverlays().add(currentPositionOverlay);
 
-		CircleDrawable circle = new CircleDrawable(Color.RED, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-				24, getResources().getDisplayMetrics()));
-		savedPositionsOverlay = new ArrayItemizedOverlay(circle);
-		mapView.getOverlays().add(savedPositionsOverlay);
+		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+				12, getResources().getDisplayMetrics());
+		CircleDrawable circle = new CircleDrawable(Color.RED, size);
+		mapAnnotationsOverlay = new ArrayItemizedOverlay(circle, false) {
+			@Override
+			protected boolean onTap(int index) {
+				MainActivity.this.onMapAnnotationTap(index);
+				return true;
+			}
+
+			@Override
+			public boolean onTap(GeoPoint geoPoint, MapView mapView) {
+				if(editedOverlayItem != null) {
+					return true;
+				}
+				
+				boolean hasHit = checkItemHit(geoPoint, mapView, EventType.TAP);
+				/*if(!hasHit) {
+					// close balloon: mapAnnotationsOv only layer
+					// that can handle taps => OK to close balloon
+					// if no hit
+					MainActivity.this.clearBubble();
+				}*/
+				
+				return hasHit;
+			}
+
+		};
+		mapView.getOverlays().add(mapAnnotationsOverlay);
+
+		// FIXME remove
+		mapAnnotations.clear();
+
+		// FIXME dummy annotation
+		MapAnnotation mapAnnotation1 = new MapAnnotation();
+		mapAnnotation1.latitude = Utils.INITIAL_LAT;
+		mapAnnotation1.longitude = Utils.INITIAL_LON;
+		mapAnnotation1.title = "Annotation 1";
+		mapAnnotation1.description = "Description for Annot1";
+		mapAnnotations.add(mapAnnotation1);
+
+		for (MapAnnotation mapAnnotation : mapAnnotations) {
+			addMarker(mapAnnotation);
+		}
+
+	}
+
+	protected void addMarkerFromLongTap(MotionEvent motionEvent) {
+		MapViewPosition mapPosition = mapView.getMapPosition();
+		GeoPoint geoPoint = mapPosition.getMapCenter();
+
+		float x = motionEvent.getX();
+		float y = motionEvent.getY();
+
+		double pixelX = MercatorProjection.longitudeToPixelX(
+				geoPoint.getLongitude(), mapPosition.getZoomLevel());
+		double pixelY = MercatorProjection.latitudeToPixelY(
+				geoPoint.getLatitude(), mapPosition.getZoomLevel());
+
+		pixelX -= mapView.getWidth() >> 1;
+		pixelY -= mapView.getHeight() >> 1;
+
+		double latitude = MercatorProjection.pixelYToLatitude(pixelY + y,
+				mapPosition.getZoomLevel());
+		double longitude = MercatorProjection.pixelXToLongitude(pixelX + x,
+				mapPosition.getZoomLevel());
+
+		editedMapAnnotation = new MapAnnotation();
+		editedMapAnnotation.latitude = latitude;
+		editedMapAnnotation.longitude = longitude;
+		mapAnnotations.add(editedMapAnnotation);
+		editedOverlayItem = addMarker(editedMapAnnotation);
+
+		isCreation = true;
+
+		Intent intent = new Intent();
+		intent.setClass(this, MapAnnotationEditActivity.class);
+		intent.putExtra(Utils.EXTRA_IS_NEW, true);
+		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT);
+	}
+
+	private OverlayItem addMarker(MapAnnotation mapAnnotation) {
+		OverlayItem overlay = new OverlayItem(new GeoPoint(
+				mapAnnotation.latitude, mapAnnotation.longitude),
+				mapAnnotation.title, mapAnnotation.description);
+		mapAnnotationsOverlay.addItem(overlay);
+		return overlay;
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+		case Utils.CODE_MAP_ANNOTATION_EDIT:
+			if (resultCode == RESULT_OK) {
+				editedMapAnnotation.title = data.getExtras().getString(
+						Utils.EXTRA_TITLE);
+				editedMapAnnotation.description = data.getExtras().getString(
+						Utils.EXTRA_DESCRIPTION);
+			} else {
+				if (isCreation) {
+					mapAnnotations.remove(editedMapAnnotation);
+					mapAnnotationsOverlay.removeItem(editedOverlayItem);
+				}
+			}
+
+			editedOverlayItem = null;
+			editedMapAnnotation = null;
+			isCreation = false;
+
+			break;
+		}
+		super.onActivityResult(requestCode, resultCode, data);
+	}
+
+	protected void onMapAnnotationTap(int index) {
+		MapAnnotation mapAnnotation = mapAnnotations.get(index);
+		if(currentMapAnnotationForBubble == mapAnnotation) {
+			// toggle
+			clearBubble();
+			return;
+		}
 		
-		// FIXME remove test
-		OverlayItem oi = new OverlayItem(new GeoPoint(INITIAL_LAT, INITIAL_LON), "he", "hell");
-		savedPositionsOverlay.addItem(oi);
+		addBubble(mapAnnotation);
+	}
+	
+	private void addBubble(MapAnnotation mapAnnotation) {
+		currentMapAnnotationForBubble = mapAnnotation;
+
+		TextView bubbleView = new TextView(this);
+		Utils.setBackground(bubbleView,
+				getResources()
+						.getDrawable(R.drawable.balloon_overlay_unfocused));
+		bubbleView.setGravity(Gravity.CENTER);
+		bubbleView.setMaxEms(20);
+		bubbleView.setTextSize(15);
+		bubbleView.setTextColor(Color.BLACK);
+		bubbleView.setText(mapAnnotation.title);
+		Bitmap bitmap = Utils.viewToBitmap(this, bubbleView);
+		BitmapDrawable bd = new BitmapDrawable(getResources(), bitmap);
+
+		GeoPoint gp = new GeoPoint(mapAnnotation.latitude,
+				mapAnnotation.longitude);
+
+		if(bubbleTextOverlay != null) {
+			mapView.getOverlays().remove(bubbleTextOverlay);
+		}
+		bubbleTextOverlay = new ArrayItemizedOverlay(bd);
+		OverlayItem bubble = new OverlayItem();
+		bubble.setPoint(gp);
+		bubbleTextOverlay.addItem(bubble);
+		mapView.getOverlays().add(bubbleTextOverlay);
+	}
+	
+	private void clearBubble() {
+		if(bubbleTextOverlay != null) {
+			mapView.getOverlays().remove(bubbleTextOverlay);
+			currentMapAnnotationForBubble = null;
+		}
 	}
 
 	private File createFileFromInputStream(File f, String mapName) {
@@ -286,7 +470,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				.isGooglePlayServicesAvailable(this);
 		// If Google Play services is available
 		if (ConnectionResult.SUCCESS == resultCode) {
-			Log.d(TAG, "Google Play services is available.");
+			Log.d(Utils.TAG, "Google Play services is available.");
 			return true;
 		} else {
 			return false;

@@ -1,6 +1,8 @@
-package com.vellut.tokyoofflinemap;
+package com.vellut.offlinemap;
 
 import org.mapsforge.android.maps.MapView;
+
+import com.vellut.offlinemap.tokyo.R;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -23,7 +25,7 @@ public class CopyrightMapView extends MapView {
 		this.copyrightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		this.copyrightPaint.setTypeface(Typeface.DEFAULT);
 		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
-				10, getResources().getDisplayMetrics());
+				12, getResources().getDisplayMetrics());
 		this.copyrightPaint.setTextSize(size);
 		this.copyrightPaint.setColor(Color.BLACK);
 		this.copyrightPaint.setAlpha(128);
