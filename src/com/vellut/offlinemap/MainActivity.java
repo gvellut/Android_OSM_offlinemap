@@ -10,11 +10,9 @@ import java.util.ArrayList;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
-import org.mapsforge.android.maps.MapViewPosition;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
-import org.mapsforge.core.MercatorProjection;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -31,12 +29,9 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.GestureDetector;
-import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -71,7 +66,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private boolean isCreation;
 
 	private MapAnnotation currentMapAnnotationForBubble;
-	private GestureDetector gestureDetector;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -157,13 +151,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			createFileFromInputStream(mapFile, mapName);
 		}
 
-		gestureDetector = new GestureDetector(this,
-				new SimpleOnGestureListener() {
-					public void onLongPress(MotionEvent motionEvent) {
-						addMarkerFromLongTap(motionEvent);
-					};
-				});
-
 		restorePreferences();
 	}
 
@@ -230,20 +217,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void createMapView() {
-		mapView = new CopyrightMapView(this) {
-			@Override
-			public boolean onTouchEvent(MotionEvent motionEvent) {
-				if (gestureDetector.onTouchEvent(motionEvent)) {
-					return true;
-				}
-				if (motionEvent.getAction() != MotionEvent.ACTION_MOVE) {
-					gestureDetector.setIsLongpressEnabled(true);
-				}
-
-				return super.onTouchEvent(motionEvent);
-			}
-		};
-
+		mapView = new CopyrightMapView(this);
 		mapView.setClickable(true);
 		mapView.setBuiltInZoomControls(false);
 		mapView.setMapFile(mapFile);
@@ -261,40 +235,16 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			mapView.getController().setZoom(mapData.mapZoom);
 		}
 
+		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+				12, getResources().getDisplayMetrics());
+		CircleDrawable circle = new CircleDrawable(Color.RED, size);
+		mapAnnotationsOverlay = createMapAnnotationsOverlay(circle, false);
+		mapView.getOverlays().add(mapAnnotationsOverlay);
+
 		Drawable currentPositionMarker = getResources().getDrawable(
 				R.drawable.ic_maps_indicator_current_position_anim1);
 		currentPositionOverlay = new ArrayItemizedOverlay(currentPositionMarker);
 		mapView.getOverlays().add(currentPositionOverlay);
-
-		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-				12, getResources().getDisplayMetrics());
-		CircleDrawable circle = new CircleDrawable(Color.RED, size);
-		mapAnnotationsOverlay = new ArrayItemizedOverlay(circle, false) {
-			@Override
-			protected boolean onTap(int index) {
-				MainActivity.this.onMapAnnotationTap(index);
-				return true;
-			}
-
-			@Override
-			public boolean onTap(GeoPoint geoPoint, MapView mapView) {
-				if(editedOverlayItem != null) {
-					return true;
-				}
-				
-				boolean hasHit = checkItemHit(geoPoint, mapView, EventType.TAP);
-				/*if(!hasHit) {
-					// close balloon: mapAnnotationsOv only layer
-					// that can handle taps => OK to close balloon
-					// if no hit
-					MainActivity.this.clearBubble();
-				}*/
-				
-				return hasHit;
-			}
-
-		};
-		mapView.getOverlays().add(mapAnnotationsOverlay);
 
 		// FIXME remove
 		mapAnnotations.clear();
@@ -310,41 +260,53 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
 		}
-
 	}
 
-	protected void addMarkerFromLongTap(MotionEvent motionEvent) {
-		MapViewPosition mapPosition = mapView.getMapPosition();
-		GeoPoint geoPoint = mapPosition.getMapCenter();
+	private ArrayItemizedOverlay createMapAnnotationsOverlay(
+			Drawable defaultMarker, boolean recenter) {
+		return new ArrayItemizedOverlay(defaultMarker, recenter) {
+			@Override
+			protected boolean onTap(int index) {
+				MainActivity.this.onMapAnnotationTap(index);
+				return true;
+			}
 
-		float x = motionEvent.getX();
-		float y = motionEvent.getY();
+			@Override
+			protected boolean onLongPress(int index) {
+				MainActivity.this.onMapAnnotationLongPress(index);
+				return true;
+			}
 
-		double pixelX = MercatorProjection.longitudeToPixelX(
-				geoPoint.getLongitude(), mapPosition.getZoomLevel());
-		double pixelY = MercatorProjection.latitudeToPixelY(
-				geoPoint.getLatitude(), mapPosition.getZoomLevel());
+			@Override
+			public boolean onTap(GeoPoint geoPoint, MapView mapView) {
+				// this will call the onTap(int) method above if overlay
+				// is hit
+				return checkItemHit(geoPoint, mapView, EventType.TAP);
+			}
 
-		pixelX -= mapView.getWidth() >> 1;
-		pixelY -= mapView.getHeight() >> 1;
+			@Override 
+			public boolean onLongPress(GeoPoint geoPoint, MapView mapView) {
+				boolean hasHit = checkItemHit(geoPoint, mapView, EventType.LONG_PRESS);
+				if(!hasHit) {
+					addMarkerFromLongTap(geoPoint);
+				}
+				// Note: No other layer can handle double tap
+				return true;
+			}
+			
+		};
+	}
 
-		double latitude = MercatorProjection.pixelYToLatitude(pixelY + y,
-				mapPosition.getZoomLevel());
-		double longitude = MercatorProjection.pixelXToLongitude(pixelX + x,
-				mapPosition.getZoomLevel());
-
+	private void addMarkerFromLongTap(GeoPoint geoPoint) {
 		editedMapAnnotation = new MapAnnotation();
-		editedMapAnnotation.latitude = latitude;
-		editedMapAnnotation.longitude = longitude;
+		editedMapAnnotation.latitude = geoPoint.getLatitude();
+		editedMapAnnotation.longitude = geoPoint.getLongitude();
 		mapAnnotations.add(editedMapAnnotation);
 		editedOverlayItem = addMarker(editedMapAnnotation);
 
 		isCreation = true;
-
-		Intent intent = new Intent();
-		intent.setClass(this, MapAnnotationEditActivity.class);
-		intent.putExtra(Utils.EXTRA_IS_NEW, true);
-		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT);
+		
+		launchMapAnnotationEdit();
 	}
 
 	private OverlayItem addMarker(MapAnnotation mapAnnotation) {
@@ -380,17 +342,34 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onActivityResult(requestCode, resultCode, data);
 	}
 
-	protected void onMapAnnotationTap(int index) {
+	private void onMapAnnotationTap(int index) {
 		MapAnnotation mapAnnotation = mapAnnotations.get(index);
-		if(currentMapAnnotationForBubble == mapAnnotation) {
+		if (currentMapAnnotationForBubble == mapAnnotation) {
 			// toggle
 			clearBubble();
 			return;
 		}
-		
+
 		addBubble(mapAnnotation);
 	}
 	
+	private void onMapAnnotationLongPress(int index) {
+		editedMapAnnotation =  mapAnnotations.get(index);
+		editedOverlayItem = Utils.getItem(mapAnnotationsOverlay, index);
+		isCreation = false;
+
+		launchMapAnnotationEdit();
+	}
+	
+	private void launchMapAnnotationEdit() {
+		Intent intent = new Intent();
+		intent.setClass(this, MapAnnotationEditActivity.class);
+		intent.putExtra(Utils.EXTRA_IS_NEW, isCreation);
+		intent.putExtra(Utils.EXTRA_TITLE, editedMapAnnotation.title);
+		intent.putExtra(Utils.EXTRA_DESCRIPTION, editedMapAnnotation.description);
+		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT);
+	}
+
 	private void addBubble(MapAnnotation mapAnnotation) {
 		currentMapAnnotationForBubble = mapAnnotation;
 
@@ -409,7 +388,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		GeoPoint gp = new GeoPoint(mapAnnotation.latitude,
 				mapAnnotation.longitude);
 
-		if(bubbleTextOverlay != null) {
+		if (bubbleTextOverlay != null) {
 			mapView.getOverlays().remove(bubbleTextOverlay);
 		}
 		bubbleTextOverlay = new ArrayItemizedOverlay(bd);
@@ -418,9 +397,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		bubbleTextOverlay.addItem(bubble);
 		mapView.getOverlays().add(bubbleTextOverlay);
 	}
-	
+
 	private void clearBubble() {
-		if(bubbleTextOverlay != null) {
+		if (bubbleTextOverlay != null) {
 			mapView.getOverlays().remove(bubbleTextOverlay);
 			currentMapAnnotationForBubble = null;
 		}

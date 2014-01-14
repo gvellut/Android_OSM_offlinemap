@@ -13,7 +13,6 @@ public class MapAnnotationEditActivity extends Activity {
 
 	private EditText editTextTitle;
 	private EditText editTextDescription;
-	private boolean isNew;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -21,20 +20,23 @@ public class MapAnnotationEditActivity extends Activity {
 
 		setContentView(R.layout.activity_map_annotation_edit);
 
+		editTextTitle = (EditText) findViewById(R.id.editTextTitle);
+		editTextDescription = (EditText) findViewById(R.id.editTextDescription);
+
 		Intent intent = getIntent();
-		if (intent.getExtras().getBoolean(Utils.EXTRA_IS_NEW)) {
+		Bundle extras = intent.getExtras();
+		if (extras.getBoolean(Utils.EXTRA_IS_NEW)) {
 			// defaults
 			setTitle(R.string.map_annotation_create);
-			isNew = true;
 		} else {
 			setTitle(R.string.map_annotation_edit);
-			isNew = false;
+			String title = extras.getString(Utils.EXTRA_TITLE, "");
+			String description = extras.getString(Utils.EXTRA_DESCRIPTION, "");
+			editTextTitle.setText(title);
+			editTextDescription.setText(description);
 		}
 
 		this.setFinishOnTouchOutside(false);
-
-		editTextTitle = (EditText) findViewById(R.id.editTextTitle);
-		editTextDescription = (EditText) findViewById(R.id.editTextDescription);
 	}
 
 	@Override
