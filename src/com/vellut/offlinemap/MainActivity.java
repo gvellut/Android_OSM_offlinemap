@@ -312,14 +312,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-		mapAnnotations.clear();
+//		mapAnnotations.clear();
 		// FIXME dummy annotation
-		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
-				Utils.INITIAL_LON, Color.YELLOW);
-		mapAnnotation1.title = "Annotation 1";
-		mapAnnotation1.description = "Description for Annot1";
-		mapAnnotation1.isBookmarked = true;
-		mapAnnotations.add(mapAnnotation1);
+//		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
+//				Utils.INITIAL_LON, Color.YELLOW);
+//		mapAnnotation1.title = "Annotation 1";
+//		mapAnnotation1.description = "Description for Annot1";
+//		mapAnnotation1.isBookmarked = true;
+//		mapAnnotations.add(mapAnnotation1);
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
