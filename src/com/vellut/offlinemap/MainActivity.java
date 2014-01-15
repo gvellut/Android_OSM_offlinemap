@@ -37,7 +37,6 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -205,9 +204,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		String sMapData = settings.getString(Utils.PREF_MAP_DATA, null);
 		if (sMapData != null) {
 			try {
-				Type type = new TypeToken<MapData>() {
-				}.getType();
-				mapData = (MapData) deserializeFromString(sMapData, type);
+				mapData = (MapData) deserializeFromString(sMapData,
+						MapData.class);
 			} catch (Exception ex) {
 				Log.e(Utils.TAG, "Error getting saved MapData", ex);
 			}
@@ -239,11 +237,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				.getDefaultSharedPreferences(this);
 		SharedPreferences.Editor editor = settings.edit();
 
-		Type type = new TypeToken<MapData>() {
-		}.getType();
-		editor.putString(Utils.PREF_MAP_DATA, serializeToString(mapData, type));
+		editor.putString(Utils.PREF_MAP_DATA,
+				serializeToString(mapData, MapData.class));
 
-		type = new TypeToken<ArrayList<MapAnnotation>>() {
+		Type type = new TypeToken<ArrayList<MapAnnotation>>() {
 		}.getType();
 		editor.putString(Utils.PREF_SAVED_LOCATIONS,
 				serializeToString(mapAnnotations, type));
@@ -308,15 +305,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-		mapAnnotations.clear();
-
-		// FIXME dummy annotation
-		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
-				Utils.INITIAL_LON, Color.YELLOW);
-		mapAnnotation1.title = "Annotation 1";
-		mapAnnotation1.description = "Description for Annot1";
-		mapAnnotation1.isBookmarked = true;
-		mapAnnotations.add(mapAnnotation1);
+		 mapAnnotations.clear();
+		 // FIXME dummy annotation 
+		 MapAnnotation mapAnnotation1 = new
+		 MapAnnotation(Utils.INITIAL_LAT, Utils.INITIAL_LON, Color.YELLOW);
+		 mapAnnotation1.title = "Annotation 1"; mapAnnotation1.description =
+		 "Description for Annot1"; mapAnnotation1.isBookmarked = true;
+		 mapAnnotations.add(mapAnnotation1);
+		
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
@@ -433,18 +429,17 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
-
 		currentMapAnnotationForBubble = mapAnnotation;
 
-		TextView bubbleView = new TextView(this);
+		View bubbleView = getLayoutInflater().inflate(
+				R.layout.bubble_map_annotation, null);
 		Utils.setBackground(bubbleView,
 				getResources()
 						.getDrawable(R.drawable.balloon_overlay_unfocused));
-		bubbleView.setGravity(Gravity.CENTER);
-		bubbleView.setMaxEms(20);
-		bubbleView.setTextSize(15);
-		bubbleView.setTextColor(Color.BLACK);
-		bubbleView.setText(mapAnnotation.title);
+		TextView textViewTitle = (TextView) bubbleView.findViewById(R.id.textViewTitle);
+		textViewTitle.setText(mapAnnotation.title);
+		TextView textViewDescription = (TextView) bubbleView.findViewById(R.id.textViewDescription);
+		textViewDescription.setText(mapAnnotation.description);
 		Bitmap bitmap = Utils.viewToBitmap(this, bubbleView);
 		BitmapDrawable bd = new BitmapDrawable(getResources(), bitmap);
 
