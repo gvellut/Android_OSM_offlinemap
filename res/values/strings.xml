@@ -24,11 +24,11 @@
     
     <string name="error_empty_title">The title must not be empty</string>
     
-    <string name="welcome">Welcome to Tokyo Offline Map!\n
+    <string name="welcome"><![CDATA[Welcome to Tokyo Offline Map!\n
         - To add a note, just press and hold somewhere on the map. 
         You can change the title, details and color of the note.\n
         - Press and hold on an existing note to modify it. 
         You can star, edit or delete the note.\n
-        - For a quick look at a note, just tap it.</string>
+        - For a quick look at a note, just tap it.]]></string>
 
 </resources>
