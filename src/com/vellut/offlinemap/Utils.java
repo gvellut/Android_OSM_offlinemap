@@ -3,19 +3,14 @@ package com.vellut.offlinemap;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.mapsforge.android.maps.MapView;
-import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
-import org.mapsforge.android.maps.overlay.Overlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
-import org.mapsforge.core.GeoPoint;
 
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Color;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -50,7 +45,7 @@ public class Utils {
 	public static final int CODE_MAP_ANNOTATION_EDIT_REQUEST = 150;
 	public static final int CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST = 151;
 
-	public static final int[] MAP_ANNOTATION_COLORS = { Color.BLUE, Color.RED,
+	public static final Integer[] MAP_ANNOTATION_COLORS = { Color.BLUE, Color.RED,
 			Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA };
 
 	public static Bitmap viewToBitmap(Context c, View view) {

@@ -12,7 +12,6 @@ import java.util.ArrayList;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
-import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
@@ -30,8 +29,6 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.Point;
-import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -45,7 +42,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -76,8 +72,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private ArrayItemizedOverlay mapAnnotationsOverlay;
 	private ArrayItemizedOverlay bubbleTextOverlay;
 
-	private OverlayItem editedOverlayItem;
-	private MapAnnotation editedMapAnnotation;
+	private OverlayItem overlayItemInContext;
+	private MapAnnotation mapAnnotationInContext;
 	private boolean isCreation;
 
 	private MapAnnotation currentMapAnnotationForBubble;
@@ -147,15 +143,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onCreateContextMenu(menu, v, menuInfo);
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.menu_context, menu);
-		if(editedMapAnnotation.isBookmarked) {
-			menu.getItem(1).setTitle(getString(R.string.action_unstar_map_annotation));
+		if (mapAnnotationInContext.isBookmarked) {
+			menu.getItem(1).setTitle(
+					getString(R.string.action_unstar_map_annotation));
 		}
 	}
 
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
-		AdapterContextMenuInfo info = (AdapterContextMenuInfo) item
-				.getMenuInfo();
 		switch (item.getItemId()) {
 		case R.id.action_edit_map_annotation:
 			editMapAnnotation();
@@ -202,6 +197,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		restorePreferences();
 	}
 
+	@SuppressWarnings("unchecked")
 	public void restorePreferences() {
 		SharedPreferences settings = PreferenceManager
 				.getDefaultSharedPreferences(this);
@@ -302,7 +298,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}
 
 		Drawable circle = markerFactory
-				.getNormalIcon(Utils.DEFAULT_MARKER_COLOR);
+				.getNormalMarker(Utils.DEFAULT_MARKER_COLOR);
 		mapAnnotationsOverlay = createMapAnnotationsOverlay(circle, false);
 		mapView.getOverlays().add(mapAnnotationsOverlay);
 
@@ -364,10 +360,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void addMapAnnotationInteractive(GeoPoint geoPoint) {
-		editedMapAnnotation = new MapAnnotation(geoPoint.getLatitude(),
+		mapAnnotationInContext = new MapAnnotation(geoPoint.getLatitude(),
 				geoPoint.getLongitude(), Utils.DEFAULT_MARKER_COLOR);
-		mapAnnotations.add(editedMapAnnotation);
-		editedOverlayItem = addMarker(editedMapAnnotation);
+		mapAnnotations.add(mapAnnotationInContext);
+		overlayItemInContext = addMarker(mapAnnotationInContext);
 
 		isCreation = true;
 
@@ -378,11 +374,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OverlayItem overlay = new OverlayItem(new GeoPoint(
 				mapAnnotation.latitude, mapAnnotation.longitude),
 				mapAnnotation.title, mapAnnotation.description);
-		if (mapAnnotation.isBookmarked) {
-			overlay.setMarker(markerFactory.getStarIcon(mapAnnotation.color));
-		} else {
-			overlay.setMarker(markerFactory.getNormalIcon(mapAnnotation.color));
-		}
+		overlay.setMarker(markerFactory.getMarker(mapAnnotation));
 		mapAnnotationsOverlay.addItem(overlay);
 		return overlay;
 	}
@@ -392,20 +384,27 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		switch (requestCode) {
 		case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
 			if (resultCode == RESULT_OK) {
-				editedMapAnnotation.title = data.getExtras().getString(
+				mapAnnotationInContext.title = data.getExtras().getString(
 						Utils.EXTRA_TITLE);
-				editedMapAnnotation.description = data.getExtras().getString(
-						Utils.EXTRA_DESCRIPTION);
-				updateBubbleForMapAnnotation(editedMapAnnotation);
+				mapAnnotationInContext.description = data.getExtras()
+						.getString(Utils.EXTRA_DESCRIPTION);
+				int color = data.getExtras().getInt(Utils.EXTRA_COLOR);
+				if (color != mapAnnotationInContext.color) {
+					mapAnnotationInContext.color = color;
+					overlayItemInContext.setMarker(markerFactory
+							.getMarker(mapAnnotationInContext));
+					mapAnnotationsOverlay.requestRedraw();
+				}
+				updateBubbleForMapAnnotation(mapAnnotationInContext);
 			} else {
 				if (isCreation) {
-					mapAnnotations.remove(editedMapAnnotation);
-					mapAnnotationsOverlay.removeItem(editedOverlayItem);
+					mapAnnotations.remove(mapAnnotationInContext);
+					mapAnnotationsOverlay.removeItem(overlayItemInContext);
 				}
 			}
 
-			editedOverlayItem = null;
-			editedMapAnnotation = null;
+			overlayItemInContext = null;
+			mapAnnotationInContext = null;
 			isCreation = false;
 
 			break;
@@ -469,14 +468,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showContextMenuForMapAnnotation(int index) {
-		editedMapAnnotation = mapAnnotations.get(index);
-		editedOverlayItem = Utils.getItem(mapAnnotationsOverlay, index);
+		mapAnnotationInContext = mapAnnotations.get(index);
+		overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, index);
 		isCreation = false;
 
 		runOnUiThread(new Runnable() {
-		    public void run() {
+			public void run() {
 				openContextMenu(MainActivity.this.mapView);
-		    }
+			}
 		});
 	}
 
@@ -494,29 +493,24 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 						}
 					}, null);
 		} else {
-			mapAnnotations.remove(editedMapAnnotation);
-			mapAnnotationsOverlay.removeItem(editedOverlayItem);
+			mapAnnotations.remove(mapAnnotationInContext);
+			mapAnnotationsOverlay.removeItem(overlayItemInContext);
 
-			cleanUpEditingInformation();
+			cleanUpContextInformation();
 		}
 	}
 
 	private void starMapAnnotation() {
-		if (editedMapAnnotation.isBookmarked) {
-			editedMapAnnotation.isBookmarked = false;
-			editedOverlayItem.setMarker(markerFactory
-					.getNormalIcon(editedMapAnnotation.color));
-		} else {
-			editedMapAnnotation.isBookmarked = true;
-			editedOverlayItem.setMarker(markerFactory
-					.getStarIcon(editedMapAnnotation.color));
-		}
+		// toggle
+		mapAnnotationInContext.isBookmarked = !mapAnnotationInContext.isBookmarked;
+		overlayItemInContext.setMarker(markerFactory
+				.getMarker(mapAnnotationInContext));
 		mapAnnotationsOverlay.requestRedraw();
 	}
 
-	private void cleanUpEditingInformation() {
-		editedOverlayItem = null;
-		editedMapAnnotation = null;
+	private void cleanUpContextInformation() {
+		overlayItemInContext = null;
+		mapAnnotationInContext = null;
 		isCreation = false;
 	}
 
@@ -524,9 +518,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		Intent intent = new Intent();
 		intent.setClass(this, MapAnnotationEditActivity.class);
 		intent.putExtra(Utils.EXTRA_IS_NEW, isCreation);
-		intent.putExtra(Utils.EXTRA_TITLE, editedMapAnnotation.title);
+		intent.putExtra(Utils.EXTRA_TITLE, mapAnnotationInContext.title);
 		intent.putExtra(Utils.EXTRA_DESCRIPTION,
-				editedMapAnnotation.description);
+				mapAnnotationInContext.description);
+		intent.putExtra(Utils.EXTRA_COLOR, mapAnnotationInContext.color);
 		startActivityForResult(intent, Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST);
 	}
 

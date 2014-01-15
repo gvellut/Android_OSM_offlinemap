@@ -4,12 +4,26 @@
     android:layout_height="match_parent"
     android:orientation="vertical" >
 
-    <EditText
-        android:id="@+id/editTextTitle"
-        android:layout_width="match_parent"
+    <LinearLayout
+        style="?android:attr/buttonBarStyle"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/map_annotation_title_hint"
-        android:inputType="textCapSentences" />
+        android:measureWithLargestChild="true"
+        android:orientation="horizontal" >
+
+        <EditText
+            android:id="@+id/editTextTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/map_annotation_title_hint"
+            android:inputType="textCapSentences" />
+
+        <Spinner
+            android:id="@+id/spinnerColor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
 
     <EditText
         android:id="@+id/editTextDescription"
@@ -21,15 +35,6 @@
         android:lines="8"
         android:minLines="6"
         android:scrollbars="vertical" />
-
-    <!--
-          ImageButton
-        android:id="@+id/favorite"
-        android:layout_width="wrap_content"
-        android:layout_height="fill_parent"
-        android:background="#00ffffff"
-        android:src="@drawable/star" /
-    -->
 
     <View
         android:layout_width="fill_parent"
@@ -52,8 +57,8 @@
             android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@android:string/cancel" 
-            android:onClick="onCancel"/>
+            android:onClick="onCancel"
+            android:text="@android:string/cancel" />
 
         <Button
             android:id="@+id/btnOk"
@@ -61,8 +66,8 @@
             android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@android:string/ok" 
-            android:onClick="onOk"/>
+            android:onClick="onOk"
+            android:text="@android:string/ok" />
     </LinearLayout>
 
 </LinearLayout>

@@ -22,7 +22,7 @@ public class MarkerFactory {
 				Utils.DEFAULT_MARKER_SIZE_DP, context.getResources().getDisplayMetrics());
 	}
 	
-	public Drawable getNormalIcon(int color) {
+	public Drawable getNormalMarker(int color) {
 		Drawable icon = normalIcons.get(color);
 		if(icon == null) {
 			// divide size by 2: CricleDrawable takes radius as input
@@ -32,13 +32,21 @@ public class MarkerFactory {
 		return icon;
 	}
 	
-	public Drawable getStarIcon(int color) {
+	public Drawable getStarMarker(int color) {
 		Drawable icon = starIcons.get(color);
 		if(icon == null) {
 			icon = new StarDrawable(color, (int) (defaultSize * 1.25));
 			starIcons.put(color, icon);
 		}
 		return icon;
+	}
+	
+	public Drawable getMarker(MapAnnotation mapAnnotation) {
+		if(mapAnnotation.isBookmarked) {
+			return getStarMarker(mapAnnotation.color);
+		} else {
+			return getNormalMarker(mapAnnotation.color);
+		}
 	}
 	
 	

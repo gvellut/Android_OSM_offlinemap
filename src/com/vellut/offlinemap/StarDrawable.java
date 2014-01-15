@@ -74,13 +74,6 @@ public class StarDrawable extends Drawable {
 	}
 
 	@Override
-	protected void onBoundsChange(Rect bounds) {
-		super.onBoundsChange(bounds);
-
-		Utils.d(bounds.toShortString());
-	}
-
-	@Override
 	public void draw(Canvas canvas) {
 		Matrix matrix = new Matrix();
 		matrix.setTranslate(getBounds().exactCenterX(), getBounds()
