@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Spinner;
 
-import com.google.analytics.tracking.android.EasyTracker;
 import com.vellut.offlinemap.tokyo.R;
 
 public class MapAnnotationEditActivity extends Activity {
@@ -54,8 +53,6 @@ public class MapAnnotationEditActivity extends Activity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		
-		EasyTracker.getInstance(this).activityStart(this);
 	}
 
 	@Override
@@ -66,8 +63,6 @@ public class MapAnnotationEditActivity extends Activity {
 	@Override
 	protected void onStop() {
 		super.onStop();
-		
-		EasyTracker.getInstance(this).activityStop(this);
 	}
 
 	public void onOk(View v) {

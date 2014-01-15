@@ -43,7 +43,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
-import com.google.analytics.tracking.android.EasyTracker;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
 import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
@@ -96,8 +95,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onStart();
 
 		locationClient.connect();
-
-		EasyTracker.getInstance(this).activityStart(this);
 	}
 
 	@Override
@@ -117,8 +114,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onStop();
 
 		locationClient.disconnect();
-
-		EasyTracker.getInstance(this).activityStop(this);
 	}
 
 	@Override
@@ -131,11 +126,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.action_current_location:
-			Utils.trackEvent(this, "ui_action", "map", "current_location", 0l);
 			zoomToCurrentPosition();
 			return true;
 		case R.id.action_initial_view:
-			Utils.trackEvent(this, "ui_action", "map", "initial_view", 0l);
 			zoomToInitialPosition();
 			return true;
 		default:
@@ -370,8 +363,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		isCreation = true;
 
-		Utils.trackEvent(this, "ui_action", "map", "add_note", 1l);
-
 		launchMapAnnotationEditActivity();
 	}
 
@@ -486,8 +477,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void editMapAnnotation() {
-		Utils.trackEvent(this, "ui_action", "map", "edit_note", 2l);
-		
 		launchMapAnnotationEditActivity();
 	}
 
