@@ -21,6 +21,9 @@ import android.view.View.MeasureSpec;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.analytics.tracking.android.MapBuilder;
+
 public class Utils {
 	public static final String TAG = "TOM";
 
@@ -118,6 +121,16 @@ public class Utils {
 	
 	public static void d(String text) {
 		Log.d(TAG, text);
+	}
+	
+
+	// Analytics
+
+	public static void trackEvent(Context context, String category, String action, String label,
+			Long value) {
+		EasyTracker easyTracker = EasyTracker.getInstance(context);
+		easyTracker.send(MapBuilder.createEvent(category, action, label, value)
+				.build());
 	}
 
 }

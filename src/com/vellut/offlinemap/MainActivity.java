@@ -43,6 +43,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import com.google.analytics.tracking.android.EasyTracker;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
 import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
@@ -95,6 +96,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onStart();
 
 		locationClient.connect();
+
+		EasyTracker.getInstance(this).activityStart(this);
 	}
 
 	@Override
@@ -114,6 +117,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onStop();
 
 		locationClient.disconnect();
+
+		EasyTracker.getInstance(this).activityStop(this);
 	}
 
 	@Override
@@ -126,9 +131,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.action_current_location:
+			Utils.trackEvent(this, "ui_action", "map", "current_location", 0l);
 			zoomToCurrentPosition();
 			return true;
 		case R.id.action_initial_view:
+			Utils.trackEvent(this, "ui_action", "map", "initial_view", 0l);
 			zoomToInitialPosition();
 			return true;
 		default:
@@ -305,14 +312,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-		 mapAnnotations.clear();
-		 // FIXME dummy annotation 
-		 MapAnnotation mapAnnotation1 = new
-		 MapAnnotation(Utils.INITIAL_LAT, Utils.INITIAL_LON, Color.YELLOW);
-		 mapAnnotation1.title = "Annotation 1"; mapAnnotation1.description =
-		 "Description for Annot1"; mapAnnotation1.isBookmarked = true;
-		 mapAnnotations.add(mapAnnotation1);
-		
+		mapAnnotations.clear();
+		// FIXME dummy annotation
+		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
+				Utils.INITIAL_LON, Color.YELLOW);
+		mapAnnotation1.title = "Annotation 1";
+		mapAnnotation1.description = "Description for Annot1";
+		mapAnnotation1.isBookmarked = true;
+		mapAnnotations.add(mapAnnotation1);
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
@@ -362,6 +369,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		overlayItemInContext = addMarker(mapAnnotationInContext);
 
 		isCreation = true;
+
+		Utils.trackEvent(this, "ui_action", "map", "add_note", 1l);
 
 		launchMapAnnotationEditActivity();
 	}
@@ -436,9 +445,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		Utils.setBackground(bubbleView,
 				getResources()
 						.getDrawable(R.drawable.balloon_overlay_unfocused));
-		TextView textViewTitle = (TextView) bubbleView.findViewById(R.id.textViewTitle);
+		TextView textViewTitle = (TextView) bubbleView
+				.findViewById(R.id.textViewTitle);
 		textViewTitle.setText(mapAnnotation.title);
-		TextView textViewDescription = (TextView) bubbleView.findViewById(R.id.textViewDescription);
+		TextView textViewDescription = (TextView) bubbleView
+				.findViewById(R.id.textViewDescription);
 		textViewDescription.setText(mapAnnotation.description);
 		Bitmap bitmap = Utils.viewToBitmap(this, bubbleView);
 		BitmapDrawable bd = new BitmapDrawable(getResources(), bitmap);
@@ -475,6 +486,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void editMapAnnotation() {
+		Utils.trackEvent(this, "ui_action", "map", "edit_note", 2l);
+		
 		launchMapAnnotationEditActivity();
 	}
 
