@@ -11,7 +11,7 @@
         android:id="@+id/action_initial_view"
         android:orderInCategory="100"
         android:showAsAction="never"
-        android:title="@string/action_tokyo_view"/>
+        android:title="@string/action_initial_view"/>
     
     <!-- item
         android:id="@+id/action_settings"
