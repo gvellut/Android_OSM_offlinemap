@@ -19,6 +19,7 @@ public class CircleDrawable extends Drawable {
 		paint = new Paint();
 		paint.setStyle(Style.FILL);
 		paint.setColor(color);
+		paint.setAntiAlias(true);
 
 		setBounds(-radius, -radius, radius, radius);
 	}
@@ -45,13 +46,13 @@ public class CircleDrawable extends Drawable {
 		return radius * 2;
 	}
 	
-	
 	@Override
 	public void setAlpha(int alpha) {
+		paint.setAlpha(alpha);
 	}
 
 	@Override
 	public void setColorFilter(ColorFilter cf) {
+		paint.setColorFilter(cf);
 	}
-
 }

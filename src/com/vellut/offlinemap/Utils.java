@@ -3,14 +3,19 @@ package com.vellut.offlinemap;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import org.mapsforge.android.maps.MapView;
+import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
+import org.mapsforge.android.maps.overlay.Overlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
+import org.mapsforge.core.GeoPoint;
 
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -28,6 +33,9 @@ public class Utils {
 	public static final double INITIAL_LAT = 35.682817;
 	public static final double INITIAL_LON = 139.74678;
 	public static final byte INITIAL_ZOOM = 14;
+	
+	public static final int DEFAULT_MARKER_COLOR = Color.CYAN;
+	public static final int DEFAULT_MARKER_SIZE_DP = 24;
 
 	public static final String EXTRA_IS_NEW = "extra_is_new";
 	public static final String EXTRA_TITLE = "extra_title";
@@ -38,7 +46,6 @@ public class Utils {
 	public static final String PREF_MAP_DATA = "pref_map_data";
 	public static final String PREF_SAVED_LOCATIONS = "pref_saved_locations";
 	public static final String PREF_IS_FIRST_TIME_RUN = "pref_is_first_time_run";
-	
 
 	public static final int CODE_MAP_ANNOTATION_EDIT_REQUEST = 150;
 	public static final int CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST = 151;
@@ -117,4 +124,5 @@ public class Utils {
 	public static void d(String text) {
 		Log.d(TAG, text);
 	}
+
 }

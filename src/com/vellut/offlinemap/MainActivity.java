@@ -12,12 +12,15 @@ import java.util.ArrayList;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
+import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
@@ -27,16 +30,22 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.util.TypedValue;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -57,7 +66,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private File mapFile;
 	private LocationClient locationClient;
 	private MapView mapView;
-	private boolean zoomToCurrentPositionOnConnected = false;
+	private boolean zoomToCurrentPositionOnConnected;
+	private MarkerFactory markerFactory;
 
 	private MapData mapData;
 	private ArrayList<MapAnnotation> mapAnnotations;
@@ -113,7 +123,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		getMenuInflater().inflate(R.menu.main, menu);
+		getMenuInflater().inflate(R.menu.menu_main, menu);
 		return true;
 	}
 
@@ -128,6 +138,36 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
+		}
+	}
+
+	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v,
+			ContextMenuInfo menuInfo) {
+		super.onCreateContextMenu(menu, v, menuInfo);
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.menu_context, menu);
+		if(editedMapAnnotation.isBookmarked) {
+			menu.getItem(1).setTitle(getString(R.string.action_unstar_map_annotation));
+		}
+	}
+
+	@Override
+	public boolean onContextItemSelected(MenuItem item) {
+		AdapterContextMenuInfo info = (AdapterContextMenuInfo) item
+				.getMenuInfo();
+		switch (item.getItemId()) {
+		case R.id.action_edit_map_annotation:
+			editMapAnnotation();
+			return true;
+		case R.id.action_star_map_annotation:
+			starMapAnnotation();
+			return true;
+		case R.id.action_delete_map_annotation:
+			deleteMapAnnotation(true);
+			return true;
+		default:
+			return super.onContextItemSelected(item);
 		}
 	}
 
@@ -156,6 +196,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			d("Installing map");
 			createFileFromInputStream(mapFile, mapName);
 		}
+
+		markerFactory = new MarkerFactory(this);
 
 		restorePreferences();
 	}
@@ -237,7 +279,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void configureUI() {
 		createMapView();
-		
+		registerForContextMenu(mapView);
+
 		if (isFirstTimeRun) {
 			isFirstTimeRun = false;
 
@@ -247,7 +290,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			zoomToInitialPosition();
 		} else {
 			if (mapData.mapZoom == 0) {
-				// in case there is a bug...
+				// just in case...
 				zoomToInitialPosition();
 			} else {
 				// mapData is valid: Zoom on previous position
@@ -258,9 +301,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			}
 		}
 
-		int size = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-				12, getResources().getDisplayMetrics());
-		CircleDrawable circle = new CircleDrawable(Color.RED, size);
+		Drawable circle = markerFactory
+				.getNormalIcon(Utils.DEFAULT_MARKER_COLOR);
 		mapAnnotationsOverlay = createMapAnnotationsOverlay(circle, false);
 		mapView.getOverlays().add(mapAnnotationsOverlay);
 
@@ -270,15 +312,15 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-		/*mapAnnotations.clear();
+		mapAnnotations.clear();
 
 		// FIXME dummy annotation
-		MapAnnotation mapAnnotation1 = new MapAnnotation();
-		mapAnnotation1.latitude = Utils.INITIAL_LAT;
-		mapAnnotation1.longitude = Utils.INITIAL_LON;
+		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
+				Utils.INITIAL_LON, Color.YELLOW);
 		mapAnnotation1.title = "Annotation 1";
 		mapAnnotation1.description = "Description for Annot1";
-		mapAnnotations.add(mapAnnotation1);*/
+		mapAnnotation1.isBookmarked = true;
+		mapAnnotations.add(mapAnnotation1);
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
@@ -296,7 +338,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 			@Override
 			protected boolean onLongPress(int index) {
-				MainActivity.this.editMapAnnotation(index);
+				MainActivity.this.showContextMenuForMapAnnotation(index);
 				return true;
 			}
 
@@ -322,9 +364,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void addMapAnnotationInteractive(GeoPoint geoPoint) {
-		editedMapAnnotation = new MapAnnotation();
-		editedMapAnnotation.latitude = geoPoint.getLatitude();
-		editedMapAnnotation.longitude = geoPoint.getLongitude();
+		editedMapAnnotation = new MapAnnotation(geoPoint.getLatitude(),
+				geoPoint.getLongitude(), Utils.DEFAULT_MARKER_COLOR);
 		mapAnnotations.add(editedMapAnnotation);
 		editedOverlayItem = addMarker(editedMapAnnotation);
 
@@ -337,6 +378,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OverlayItem overlay = new OverlayItem(new GeoPoint(
 				mapAnnotation.latitude, mapAnnotation.longitude),
 				mapAnnotation.title, mapAnnotation.description);
+		if (mapAnnotation.isBookmarked) {
+			overlay.setMarker(markerFactory.getStarIcon(mapAnnotation.color));
+		} else {
+			overlay.setMarker(markerFactory.getNormalIcon(mapAnnotation.color));
+		}
 		mapAnnotationsOverlay.addItem(overlay);
 		return overlay;
 	}
@@ -383,7 +429,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			clearBubble();
 			return;
 		}
-		
+
 		showBubbleForMapAnnotation(mapAnnotation);
 	}
 
@@ -415,19 +461,63 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		bubbleTextOverlay.addItem(bubble);
 		mapView.getOverlays().add(bubbleTextOverlay);
 	}
-	
+
 	private void updateBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
 		if (currentMapAnnotationForBubble == mapAnnotation) {
 			showBubbleForMapAnnotation(mapAnnotation);
 		}
 	}
 
-	private void editMapAnnotation(int index) {
+	private void showContextMenuForMapAnnotation(int index) {
 		editedMapAnnotation = mapAnnotations.get(index);
 		editedOverlayItem = Utils.getItem(mapAnnotationsOverlay, index);
 		isCreation = false;
 
+		runOnUiThread(new Runnable() {
+		    public void run() {
+				openContextMenu(MainActivity.this.mapView);
+		    }
+		});
+	}
+
+	private void editMapAnnotation() {
 		launchMapAnnotationEditActivity();
+	}
+
+	private void deleteMapAnnotation(boolean confirm) {
+		if (confirm) {
+			showAlertDialog(R.string.confirm_delete_map_annotation, true,
+					new OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							MainActivity.this.deleteMapAnnotation(false);
+						}
+					}, null);
+		} else {
+			mapAnnotations.remove(editedMapAnnotation);
+			mapAnnotationsOverlay.removeItem(editedOverlayItem);
+
+			cleanUpEditingInformation();
+		}
+	}
+
+	private void starMapAnnotation() {
+		if (editedMapAnnotation.isBookmarked) {
+			editedMapAnnotation.isBookmarked = false;
+			editedOverlayItem.setMarker(markerFactory
+					.getNormalIcon(editedMapAnnotation.color));
+		} else {
+			editedMapAnnotation.isBookmarked = true;
+			editedOverlayItem.setMarker(markerFactory
+					.getStarIcon(editedMapAnnotation.color));
+		}
+		mapAnnotationsOverlay.requestRedraw();
+	}
+
+	private void cleanUpEditingInformation() {
+		editedOverlayItem = null;
+		editedMapAnnotation = null;
+		isCreation = false;
 	}
 
 	private void launchMapAnnotationEditActivity() {
@@ -526,16 +616,21 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		errorDialog.show();
 	}
 
-	private void showOKDialog(int resourceId) {
+	private void showAlertDialog(int resourceId, boolean showCancel,
+			OnClickListener okListener, OnClickListener cancelListener) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage(R.string.welcome).setPositiveButton(
-				android.R.string.ok, null);
+		builder.setMessage(resourceId).setPositiveButton(android.R.string.ok,
+				okListener);
+		if (showCancel) {
+			builder.setNegativeButton(android.R.string.cancel, cancelListener);
+		}
+
 		// Create the AlertDialog object and return it
 		builder.create().show();
 	}
 
 	private void showWelcomeDialog() {
-		showOKDialog(R.string.welcome);
+		showAlertDialog(R.string.welcome, false, null, null);
 	}
 
 	@Override
