@@ -7,6 +7,7 @@
     <string name="action_current_location">Position</string>
     <string name="action_initial_view">Zoom on Tokyo</string>
     <string name="action_about">About</string>
+    <string name="action_export_import">Export &amp; Import</string>
     
     <string name="action_edit_map_annotation">Edit</string>
     <string name="action_star_map_annotation">Star</string>
@@ -30,5 +31,18 @@
         - Press and hold on an existing note to modify it. 
         You can star, edit or delete the note.\n
         - For a quick look at a note, just tap it.]]></string>
+
+    <string-array name="items_export_import">
+        <item>Export notes to file</item>
+        <item>Import notes from file</item>
+    </string-array>
+
+    <string name="file_explorer_activity_up">Back (now at %1$)</string>
+    <string name="file_explorer_activity_choose_file">Choose file</string>
+    <string name="file_explorer_activity_choose_folder">Choose folder</string>
+    <string name="cannot_write">You do not have permission to write in this folder.</string>
+    <string name="confirm_import">This will erase all your current notes. Continue?</string>
+    <string name="export_done">The file was exported successfully</string>
+    <string name="import_done">The file was imported successfully</string>
 
 </resources>

@@ -1,14 +1,20 @@
 package com.vellut.offlinemap;
 
 import static com.vellut.offlinemap.Utils.d;
+import static com.vellut.offlinemap.Utils.e;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
@@ -42,6 +48,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
@@ -78,6 +85,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private MapAnnotation currentMapAnnotationForBubble;
 
 	private boolean isFirstTimeRun;
+	private boolean aBoolean;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -133,6 +141,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			case R.id.action_initial_view:
 				zoomToInitialPosition();
 				return true;
+			case R.id.action_export_import:
+				showExportImportDialog();
+				return true;
 			default:
 				return super.onOptionsItemSelected(item);
 		}
@@ -182,6 +193,25 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getController().setCenter(
 				new GeoPoint(Utils.INITIAL_LAT, Utils.INITIAL_LON));
 		mapView.getController().setZoom(Utils.INITIAL_ZOOM);
+	}
+
+	private void showExportImportDialog() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setItems(R.array.items_export_import, new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int itemIndex) {
+				if (itemIndex == 0) {
+					// export
+					startExportMapAnnotationsToFile();
+				} else {
+					// import
+					startImportMapAnnotationsFromFile();
+				}
+			}
+		});
+		builder.setNegativeButton(android.R.string.cancel, null);
+
+		// Create the AlertDialog object and return it
+		builder.create().show();
 	}
 
 	private void init() {
@@ -408,15 +438,115 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				break;
 
 			case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
-				if (resultCode == RESULT_OK) {
+				if (aBoolean) {
 					d("PlayServices Resolved");
 				} else {
 					d("PlayServices Not Resolved");
 				}
 				break;
+
+			case Utils.CODE_EXPORT_FILE_EXPLORER_REQUEST:
+				if (resultCode == RESULT_OK) {
+					String dirPath = data.getExtras().getString(
+							Utils.EXTRA_FILE_PATH);
+					File file = new File(dirPath);
+					if(file.canWrite()) {
+						Date now = new Date();
+						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
+						String fileName = Utils.OFM_FILE_NAME_FOR_EXPORT + "-" +
+								sdf.format(now) + "." +
+								Utils.OFM_FILE_EXTENSION;
+						file = new File(dirPath, fileName);
+						Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+						}.getType();
+						String ofmData = serializeToString(mapAnnotations, type);
+						OutputStream os = null;
+						try {
+							os = new BufferedOutputStream(new FileOutputStream(file));
+							os.write(ofmData.getBytes("UTF-8"));
+							Toast.makeText(this, getString(R.string.export_done),
+									Toast.LENGTH_SHORT).show();
+						} catch(IOException ex) {
+							e("Error exporting", ex);
+						} finally {
+							if(os != null) {
+								try {
+									os.close();
+								} catch (IOException e) {
+								}
+							}
+						}
+					} else {
+						showAlertDialog(R.string.cannot_write, false, null, null);
+					}
+				}
+				break;
+
+			case Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST:
+				if (resultCode == RESULT_OK) {
+					String filePath = data.getExtras().getString(
+							Utils.EXTRA_FILE_PATH);
+					File file = new File(filePath);
+
+					String sSavedLocations;
+					InputStream is = null;
+					try {
+						is = new BufferedInputStream(new FileInputStream(new File(filePath)));
+						sSavedLocations = Utils.convertStreamToString(is);
+						Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+						}.getType();
+
+						mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
+								sSavedLocations, type);
+
+						clearBubble();
+						mapAnnotationsOverlay.clear();
+						for (MapAnnotation mapAnnotation : mapAnnotations) {
+							addMarker(mapAnnotation);
+						}
+						mapAnnotationsOverlay.requestRedraw();
+
+						Toast.makeText(this, getString(R.string.import_done),
+								Toast.LENGTH_SHORT).show();
+					}  catch(IOException ex) {
+						e("Error exporting", ex);
+					} finally {
+						if(is != null) {
+							try {
+								is.close();
+							} catch (IOException e) {
+							}
+						}
+					}
+				}
+				break;
+
 		}
 
 		super.onActivityResult(requestCode, resultCode, data);
+	}
+
+	private void startExportMapAnnotationsToFile() {
+		Intent intent = new Intent();
+		intent.setClass(this, FileExplorerActivity.class);
+		intent.putExtra(Utils.EXTRA_CHOOSE_DIRECTORY_ONLY, true);
+		startActivityForResult(intent, Utils.CODE_EXPORT_FILE_EXPLORER_REQUEST);
+	}
+
+	private void startImportMapAnnotationsFromFile() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage(R.string.confirm_import)
+				.setNegativeButton(android.R.string.cancel, null)
+				.setPositiveButton(android.R.string.ok, new OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						Intent intent = new Intent();
+						intent.setClass(MainActivity.this, FileExplorerActivity.class);
+						intent.putExtra(Utils.EXTRA_EXTENSION_FILTER, Utils.OFM_FILE_EXTENSION);
+						startActivityForResult(intent, Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST);
+					}
+				});
+		builder.create().show();
 	}
 
 	private void showBubbleForMapAnnotationInteractive(int index) {

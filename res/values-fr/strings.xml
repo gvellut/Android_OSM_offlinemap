@@ -7,6 +7,7 @@
     <string name="action_settings">Réglages</string>
     <string name="action_current_location">Position</string>
     <string name="action_about">A propos</string>
+    <string name="action_export_import">Export &amp; Import</string>
     
     <string name="action_edit_map_annotation">Modifier</string>
     <string name="action_star_map_annotation">Spécial</string>
@@ -30,5 +31,19 @@
         - Appuyez et maintenez le doigt sur un point existant pour le changer. 
         Vous pouvez le modifer, lui donner un icône spécial ou l\'effacer.\n
         - Pour visualiser rapidement le contenu d\'un point, appuyer simplement dessus.]]></string>
+
+    <string-array name="items_export_import">
+        <item>Exporter les points vers un fichier</item>
+        <item>Importer les points vers un fichier</item>
+    </string-array>
+
+
+    <string name="file_explorer_activity_up">Retour</string>
+    <string name="file_explorer_activity_choose_file">Choisir un fichier</string>
+    <string name="file_explorer_activity_choose_folder">Choisir un répertoire</string>
+    <string name="cannot_write">Vous ne pouvew pas écrire dans ce répertoire.</string>
+    <string name="confirm_import">Cette opération écrasera vos points existants. Continuer ?</string>
+    <string name="export_done">Le fichier a été exporté avec succès</string>
+    <string name="import_done">Le fichier a été importé avec succès</string>
 
 </resources>

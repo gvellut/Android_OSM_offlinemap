@@ -33,6 +33,9 @@
         <activity
             android:name="com.vellut.offlinemap.MapAnnotationEditActivity"
             android:theme="@android:style/Theme.Holo.Light.Dialog" />
+        <activity
+            android:name="com.vellut.offlinemap.FileExplorerActivity"
+            android:theme="@android:style/Theme.Holo.Light.Dialog" />
     </application>
 
 </manifest>
