@@ -1,10 +1,11 @@
 /gen
 /bin
 /.settings
+/.idea
 /.project
 /.classpath
 /sign.properties
 /build
 /local.properties
-/android.keystore
+/android_keystore
 /*.iml
