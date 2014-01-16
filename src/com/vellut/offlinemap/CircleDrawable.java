@@ -1,6 +1,7 @@
 package com.vellut.offlinemap;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
@@ -10,14 +11,20 @@ import android.graphics.drawable.Drawable;
 public class CircleDrawable extends Drawable {
 
 	private int radius;
-	private Paint paint;
+	private Paint paint, paintBorder;
 	
 	public CircleDrawable(int color, int radius) {
 		this.radius = radius;
 		paint = new Paint();
 		paint.setStyle(Style.FILL);
 		paint.setColor(color);
-		paint.setAntiAlias(true);
+		paint.setAntiAlias(false);
+
+		paintBorder = new Paint();
+		paintBorder.setStyle(Style.STROKE);
+		paintBorder.setColor(Color.WHITE);
+		paintBorder.setStrokeWidth(2);
+		paintBorder.setAntiAlias(true);
 
 		setBounds(-radius, -radius, radius, radius);
 	}
@@ -27,6 +34,7 @@ public class CircleDrawable extends Drawable {
 		float cx = (getBounds().right + getBounds().left) / 2;
 		float cy = (getBounds().top + getBounds().bottom) / 2;
 		canvas.drawCircle(cx, cy, radius, paint);
+		canvas.drawCircle(cx, cy, radius, paintBorder);
 	}
 
 	@Override

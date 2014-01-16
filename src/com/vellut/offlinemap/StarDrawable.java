@@ -1,6 +1,7 @@
 package com.vellut.offlinemap;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
@@ -12,7 +13,7 @@ import android.graphics.drawable.Drawable;
 
 public class StarDrawable extends Drawable {
 
-	private Paint paint;
+	private Paint paint, paintBorder;
 	private Path path, translatedPath;
 	private int size;
 
@@ -26,6 +27,12 @@ public class StarDrawable extends Drawable {
 		paint.setStyle(Style.FILL);
 		paint.setColor(color);
 
+		paintBorder = new Paint();
+		paintBorder.setStyle(Style.STROKE);
+		paintBorder.setColor(Color.WHITE);
+		paintBorder.setStrokeWidth(2);
+		paintBorder.setAntiAlias(true);
+
 		int halfSize = size / 2;
 		setBounds(-halfSize, -halfSize, halfSize, halfSize);
 		computePath();
@@ -34,52 +41,28 @@ public class StarDrawable extends Drawable {
 
 	private void computePath() {
 		Rect bounds = getBounds();
-		int minDim = Math.min(bounds.width(), bounds.height());
-
-		double bigHypot = (minDim / Math.cos(Math.toRadians(STAR_ANGLE_HALF)));
-		double bigB = minDim;
-		double bigA = Math.tan(Math.toRadians(18)) * bigB;
-
-		double littleHypot = bigHypot
-				/ (2 + Math.cos(Math.toRadians(STAR_OPP_ANGLE)) + Math.cos(Math
-						.toRadians(STAR_OPP_ANGLE)));
-		double littleA = Math.cos(Math.toRadians(STAR_OPP_ANGLE)) * littleHypot;
-		double littleB = Math.sin(Math.toRadians(STAR_OPP_ANGLE)) * littleHypot;
-
-		int topXPoint = bounds.left + bounds.width() / 2;
-		int topYPoint = bounds.top;
+		float width = bounds.width();
+		float height = bounds.height();
+		float[] vertices = {0.0f, 0.375f, 0.375f, 0.375f, 0.5f, 0.0f, 0.625f, 0.375f, 1.0f, 0.375f,
+				0.6875f, 0.625f, 0.8125f, 1.0f, 0.5f, 0.75f, 0.1875f, 1.0f, 0.3125f, 0.625f};
 
 		path = new Path();
 		// draw pentagram
-		// start at the top point
-		path.moveTo(topXPoint, topYPoint);
-
-		// top to bottom right point
-		path.lineTo((int) (topXPoint + bigA), (int) (topYPoint + bigB));
-
-		// bottom right to middle left point
-		path.lineTo((int) (topXPoint - littleA - littleB),
-				(int) (topYPoint + littleB));
-
-		// middle left to middle right point
-		path.lineTo((int) (topXPoint + littleA + littleB),
-				(int) (topYPoint + littleB));
-
-		// middle right to bottom left point
-		path.lineTo((int) (topXPoint - bigA), (int) (topYPoint + bigB));
-
-		// bottom left to top point
-		path.lineTo(topXPoint, topYPoint);
+		path.moveTo(vertices[0] * width, vertices[1] * height);
+		for (int i = 2; i < vertices.length; i += 2) {
+			path.lineTo(vertices[i] * width, vertices[i + 1] * height);
+		}
 		path.close();
 	}
 
 	@Override
 	public void draw(Canvas canvas) {
 		Matrix matrix = new Matrix();
-		matrix.setTranslate(getBounds().exactCenterX(), getBounds()
-				.exactCenterY());
+		matrix.setTranslate(getBounds().left, getBounds()
+				.top);
 		path.transform(matrix, translatedPath);
 		canvas.drawPath(translatedPath, paint);
+		canvas.drawPath(translatedPath, paintBorder);
 	}
 
 	@Override
