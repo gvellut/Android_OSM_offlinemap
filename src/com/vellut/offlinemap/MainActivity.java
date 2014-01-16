@@ -40,6 +40,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -87,6 +88,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		init();
 		configureUI();
+
+		d("OnCreate");
 	}
 
 	@Override
@@ -124,20 +127,20 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case R.id.action_current_location:
-			zoomToCurrentPosition();
-			return true;
-		case R.id.action_initial_view:
-			zoomToInitialPosition();
-			return true;
-		default:
-			return super.onOptionsItemSelected(item);
+			case R.id.action_current_location:
+				zoomToCurrentPosition();
+				return true;
+			case R.id.action_initial_view:
+				zoomToInitialPosition();
+				return true;
+			default:
+				return super.onOptionsItemSelected(item);
 		}
 	}
 
 	@Override
 	public void onCreateContextMenu(ContextMenu menu, View v,
-			ContextMenuInfo menuInfo) {
+									ContextMenuInfo menuInfo) {
 		super.onCreateContextMenu(menu, v, menuInfo);
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.menu_context, menu);
@@ -150,17 +153,17 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case R.id.action_edit_map_annotation:
-			editMapAnnotation();
-			return true;
-		case R.id.action_star_map_annotation:
-			starMapAnnotation();
-			return true;
-		case R.id.action_delete_map_annotation:
-			deleteMapAnnotation(true);
-			return true;
-		default:
-			return super.onContextItemSelected(item);
+			case R.id.action_edit_map_annotation:
+				editMapAnnotation();
+				return true;
+			case R.id.action_star_map_annotation:
+				starMapAnnotation();
+				return true;
+			case R.id.action_delete_map_annotation:
+				deleteMapAnnotation(true);
+				return true;
+			default:
+				return super.onContextItemSelected(item);
 		}
 	}
 
@@ -377,40 +380,40 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
-		case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
-			if (resultCode == RESULT_OK) {
-				mapAnnotationInContext.title = data.getExtras().getString(
-						Utils.EXTRA_TITLE);
-				mapAnnotationInContext.description = data.getExtras()
-						.getString(Utils.EXTRA_DESCRIPTION);
-				int color = data.getExtras().getInt(Utils.EXTRA_COLOR);
-				if (color != mapAnnotationInContext.color) {
-					mapAnnotationInContext.color = color;
-					overlayItemInContext.setMarker(markerFactory
-							.getMarker(mapAnnotationInContext));
-					mapAnnotationsOverlay.requestRedraw();
+			case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
+				if (resultCode == RESULT_OK) {
+					mapAnnotationInContext.title = data.getExtras().getString(
+							Utils.EXTRA_TITLE);
+					mapAnnotationInContext.description = data.getExtras()
+							.getString(Utils.EXTRA_DESCRIPTION);
+					int color = data.getExtras().getInt(Utils.EXTRA_COLOR);
+					if (color != mapAnnotationInContext.color) {
+						mapAnnotationInContext.color = color;
+						overlayItemInContext.setMarker(markerFactory
+								.getMarker(mapAnnotationInContext));
+						mapAnnotationsOverlay.requestRedraw();
+					}
+					updateBubbleForMapAnnotation(mapAnnotationInContext);
+				} else {
+					if (isCreation) {
+						mapAnnotations.remove(mapAnnotationInContext);
+						mapAnnotationsOverlay.removeItem(overlayItemInContext);
+					}
 				}
-				updateBubbleForMapAnnotation(mapAnnotationInContext);
-			} else {
-				if (isCreation) {
-					mapAnnotations.remove(mapAnnotationInContext);
-					mapAnnotationsOverlay.removeItem(overlayItemInContext);
+
+				overlayItemInContext = null;
+				mapAnnotationInContext = null;
+				isCreation = false;
+
+				break;
+
+			case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
+				if (resultCode == RESULT_OK) {
+					d("PlayServices Resolved");
+				} else {
+					d("PlayServices Not Resolved");
 				}
-			}
-
-			overlayItemInContext = null;
-			mapAnnotationInContext = null;
-			isCreation = false;
-
-			break;
-
-		case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
-			if (resultCode == RESULT_OK) {
-				d("PlayServices Resolved");
-			} else {
-				d("PlayServices Not Resolved");
-			}
-			break;
+				break;
 		}
 
 		super.onActivityResult(requestCode, resultCode, data);
@@ -440,7 +443,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		textViewTitle.setText(mapAnnotation.title);
 		TextView textViewDescription = (TextView) bubbleView
 				.findViewById(R.id.textViewDescription);
-		textViewDescription.setText(mapAnnotation.description);
+		if (mapAnnotation.description == null || mapAnnotation.description.isEmpty()) {
+			((ViewGroup) bubbleView).removeView(textViewDescription);
+		} else {
+			textViewDescription.setText(mapAnnotation.description);
+		}
 		Bitmap bitmap = Utils.viewToBitmap(this, bubbleView);
 		BitmapDrawable bd = new BitmapDrawable(getResources(), bitmap);
 
@@ -608,7 +615,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showAlertDialog(int resourceId, boolean showCancel,
-			OnClickListener okListener, OnClickListener cancelListener) {
+								 OnClickListener okListener, OnClickListener cancelListener) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(resourceId).setPositiveButton(android.R.string.ok,
 				okListener);
