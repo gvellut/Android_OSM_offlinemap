@@ -155,6 +155,22 @@ public class Utils {
 		}
 	}
 
+	public static String pathRelativeTo(String filePath, String relativeToFolderPath) {
+		if(relativeToFolderPath.endsWith("/")) {
+			relativeToFolderPath = relativeToFolderPath.substring(0, relativeToFolderPath.length() - 1);
+		}
+
+		if(filePath.startsWith(relativeToFolderPath)) {
+			String path = filePath.substring(relativeToFolderPath.length());
+			if(path.startsWith("/")) {
+				path = path.substring(1);
+			}
+			return path;
+		}
+
+		return filePath;
+	}
+
 	public static void showErrorToast(Context context, String text) {
 		Toast toast = Toast.makeText(context, text, Toast.LENGTH_SHORT);
 		toast.getView().setBackgroundColor(Color.RED);

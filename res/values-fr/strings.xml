@@ -41,6 +41,8 @@
     <string name="file_explorer_activity_up">Retour</string>
     <string name="file_explorer_activity_choose_file">Choisir un fichier</string>
     <string name="file_explorer_activity_choose_folder">Choisir un répertoire</string>
+    <string name="file_explorer_activity_in_folder">Dans: %1$s</string>
+
     <string name="cannot_write">Vous ne pouvew pas écrire dans ce répertoire.</string>
     <string name="confirm_import">Cette opération écrasera vos points existants. Continuer ?</string>
     <string name="export_done">Le fichier a été exporté avec succès</string>

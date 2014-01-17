@@ -32,6 +32,7 @@ public class FileExplorerActivity extends Activity {
 
 	ArrayAdapter<Item> adapter;
 	ListView listViewFiles;
+	TextView textViewCurrentFolder;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -101,6 +102,9 @@ public class FileExplorerActivity extends Activity {
 			setTitle(R.string.file_explorer_activity_choose_folder);
 		}
 
+		textViewCurrentFolder = (TextView) findViewById(R.id.textViewCurrentFolder);
+		setCurrentFolderText();
+
 		listViewFiles = (ListView) findViewById(R.id.listViewFiles);
 
 		listViewFiles.setAdapter(adapter);
@@ -114,6 +118,7 @@ public class FileExplorerActivity extends Activity {
 					currentFolder = sel;
 					firstLevel = false;
 
+					setCurrentFolderText();
 					adapter.clear();
 					loadFileList();
 					adapter.notifyDataSetChanged();
@@ -128,6 +133,7 @@ public class FileExplorerActivity extends Activity {
 							sCurrentFolder.lastIndexOf("/")));
 					firstLevel = currentFolder.getAbsolutePath().equals(rootDirectory.getAbsolutePath());
 
+					setCurrentFolderText();
 					adapter.clear();
 					loadFileList();
 					adapter.notifyDataSetChanged();
@@ -142,6 +148,13 @@ public class FileExplorerActivity extends Activity {
 				}
 			}
 		});
+	}
+
+	private void setCurrentFolderText() {
+		String relPath = Utils.pathRelativeTo(currentFolder.getAbsolutePath(),
+				rootDirectory.getAbsolutePath());
+		relPath = "/" + relPath;
+		textViewCurrentFolder.setText(getString(R.string.file_explorer_activity_in_folder, relPath));
 	}
 
 	@Override
