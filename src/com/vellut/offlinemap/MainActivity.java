@@ -59,6 +59,7 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.vellut.offlinemap.tokyo.R;
 
@@ -80,7 +81,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private OverlayItem overlayItemInContext;
 	private MapAnnotation mapAnnotationInContext;
+	private int indexMapAnnotationInContext;
 	private boolean isCreation;
+
+	private boolean isEditingOrCreating;
 
 	private MapAnnotation currentMapAnnotationForBubble;
 
@@ -91,13 +95,17 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		d("In OnCreate");
+
 		locationClient = new LocationClient(this, this, this);
 		restorePreferences();
 
 		init();
 		configureUI();
+		if(savedInstanceState != null) {
+			restoreState(savedInstanceState);
+		}
 
-		d("OnCreate");
 	}
 
 	@Override
@@ -176,6 +184,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			default:
 				return super.onContextItemSelected(item);
 		}
+	}
+
+	@Override
+	public void onContextMenuClosed(Menu menu) {
+		super.onContextMenuClosed(menu);
 	}
 
 	private void zoomToCurrentPosition() {
@@ -392,8 +405,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				geoPoint.getLongitude(), Utils.DEFAULT_MARKER_COLOR);
 		mapAnnotations.add(mapAnnotationInContext);
 		overlayItemInContext = addMarker(mapAnnotationInContext);
+		indexMapAnnotationInContext = mapAnnotations.size() - 1; // last
 
 		isCreation = true;
+		isEditingOrCreating = true;
 
 		launchMapAnnotationEditActivity();
 	}
@@ -431,9 +446,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 					}
 				}
 
-				overlayItemInContext = null;
-				mapAnnotationInContext = null;
-				isCreation = false;
+				cleanUpContextInformation();
 
 				break;
 
@@ -601,9 +614,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showContextMenuForMapAnnotation(int index) {
+		indexMapAnnotationInContext = index;
 		mapAnnotationInContext = mapAnnotations.get(index);
 		overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, index);
-		isCreation = false;
 
 		runOnUiThread(new Runnable() {
 			public void run() {
@@ -613,6 +626,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void editMapAnnotation() {
+		isCreation = false;
+		isEditingOrCreating = true;
+
 		launchMapAnnotationEditActivity();
 	}
 
@@ -639,12 +655,39 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		overlayItemInContext.setMarker(markerFactory
 				.getMarker(mapAnnotationInContext));
 		mapAnnotationsOverlay.requestRedraw();
+
+		cleanUpContextInformation();
 	}
 
 	private void cleanUpContextInformation() {
+		d("CLEANUPCONTEXT");
+
 		overlayItemInContext = null;
 		mapAnnotationInContext = null;
 		isCreation = false;
+		isEditingOrCreating = false;
+	}
+
+
+	@Override
+	public void onSaveInstanceState(Bundle outstate) {
+		d("SAVEINSTANCESTATE " + isEditingOrCreating);
+		if(isEditingOrCreating) {
+			outstate.putInt(Utils.EXTRA_EDITING_CONTEXT_INDEX, indexMapAnnotationInContext);
+			outstate.putBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION, isCreation);
+		} // else do not care
+	}
+
+	private void restoreState(Bundle savedInstanceState) {
+		d("RESTORESTATE");
+		if(savedInstanceState.keySet().contains(Utils.EXTRA_EDITING_CONTEXT_INDEX)) {
+			indexMapAnnotationInContext = savedInstanceState.getInt(Utils.EXTRA_EDITING_CONTEXT_INDEX);
+			isCreation = savedInstanceState.getBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION);
+			isEditingOrCreating = true;
+
+			mapAnnotationInContext = mapAnnotations.get(indexMapAnnotationInContext);
+			overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, indexMapAnnotationInContext);
+		}
 	}
 
 	private void launchMapAnnotationEditActivity() {

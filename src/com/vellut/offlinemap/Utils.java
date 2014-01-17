@@ -49,7 +49,9 @@ public class Utils {
 	public static final String EXTRA_START_PATH = "start_path";
 	public static final String EXTRA_EXTENSION_FILTER = "extension_filter";
 	public static final String EXTRA_CHOOSE_DIRECTORY_ONLY = "choose_directory";
-	public static final String EXTRA_FILE_PATH = "filePath";
+	public static final String EXTRA_FILE_PATH = "file_path";
+	public static final String EXTRA_EDITING_CONTEXT_INDEX = "editing_context_index";
+	public static final String EXTRA_EDITING_CONTEXT_IS_CREATION = "editing_context_is_creation";
 
 	public static final String PREF_MAP_DATA = "pref_map_data";
 	public static final String PREF_SAVED_LOCATIONS = "pref_saved_locations";
