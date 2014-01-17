@@ -31,6 +31,7 @@
         - Appuyez et maintenez le doigt sur un point existant pour le changer. 
         Vous pouvez le modifer, lui donner un icône spécial ou l\'effacer.\n
         - Pour visualiser rapidement le contenu d\'un point, appuyer simplement dessus.]]></string>
+    <string name="timeout_location">Impossible de se localiser via GPS</string>
 
     <string-array name="items_export_import">
         <item>Exporter les points vers un fichier</item>

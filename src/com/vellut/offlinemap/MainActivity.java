@@ -38,6 +38,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -47,6 +48,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -85,6 +87,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private boolean isCreation;
 
 	private boolean isEditingOrCreating;
+	private boolean isLocationUpdating;
 
 	private MapAnnotation currentMapAnnotationForBubble;
 
@@ -99,10 +102,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		locationClient = new LocationClient(this, this, this);
 		restorePreferences();
+		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 
 		init();
 		configureUI();
-		if(savedInstanceState != null) {
+		if (savedInstanceState != null) {
 			restoreState(savedInstanceState);
 		}
 
@@ -192,11 +196,39 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void zoomToCurrentPosition() {
-		if (isGooglePlayServicesConnected()) {
+		// do not launch if location currently updating
+		if (isGooglePlayServicesConnected() && !isLocationUpdating) {
+			setProgressBarIndeterminateVisibility(true);
+
 			LocationRequest lr = new LocationRequest();
 			lr.setNumUpdates(1).setFastestInterval(1).setInterval(1)
-					.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+					.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+					.setExpirationDuration(Utils.LOCATION_UPDATE_TIMEOUT);
 			locationClient.requestLocationUpdates(lr, this);
+
+			isLocationUpdating = true;
+
+			new CountDownTimer(Utils.LOCATION_UPDATE_TIMEOUT, Utils.LOCATION_UPDATE_TIMEOUT) {
+				public void onTick(long millisUntilFinished) {
+				}
+
+				public void onFinish() {
+					// Timeout reached before we could get a fix
+					setProgressBarIndeterminateVisibility(false);
+					if (isLocationUpdating) {
+						isLocationUpdating = false;
+						locationClient.removeLocationUpdates(MainActivity.this);
+
+						Location location = locationClient.getLastLocation();
+						if (location != null) {
+							setLocation(location);
+						} else {
+							showAlertDialog(R.string.timeout_location, false, null, null);
+						}
+					}
+				}
+			}.start();
+
 		} else {
 			zoomToCurrentPositionOnConnected = true;
 		}
@@ -463,7 +495,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 					String dirPath = data.getExtras().getString(
 							Utils.EXTRA_FILE_PATH);
 					File file = new File(dirPath);
-					if(file.canWrite()) {
+					if (file.canWrite()) {
 						Date now = new Date();
 						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
 						String fileName = Utils.OFM_FILE_NAME_FOR_EXPORT + "-" +
@@ -479,10 +511,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 							os.write(ofmData.getBytes("UTF-8"));
 							Toast.makeText(this, getString(R.string.export_done),
 									Toast.LENGTH_SHORT).show();
-						} catch(IOException ex) {
+						} catch (IOException ex) {
 							e("Error exporting", ex);
 						} finally {
-							if(os != null) {
+							if (os != null) {
 								try {
 									os.close();
 								} catch (IOException e) {
@@ -521,10 +553,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 						Toast.makeText(this, getString(R.string.import_done),
 								Toast.LENGTH_SHORT).show();
-					}  catch(IOException ex) {
+					} catch (IOException ex) {
 						e("Error exporting", ex);
 					} finally {
-						if(is != null) {
+						if (is != null) {
 							try {
 								is.close();
 							} catch (IOException e) {
@@ -672,7 +704,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public void onSaveInstanceState(Bundle outstate) {
 		d("SAVEINSTANCESTATE " + isEditingOrCreating);
-		if(isEditingOrCreating) {
+		if (isEditingOrCreating) {
 			outstate.putInt(Utils.EXTRA_EDITING_CONTEXT_INDEX, indexMapAnnotationInContext);
 			outstate.putBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION, isCreation);
 		} // else do not care
@@ -680,7 +712,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void restoreState(Bundle savedInstanceState) {
 		d("RESTORESTATE");
-		if(savedInstanceState.keySet().contains(Utils.EXTRA_EDITING_CONTEXT_INDEX)) {
+		if (savedInstanceState.keySet().contains(Utils.EXTRA_EDITING_CONTEXT_INDEX)) {
 			indexMapAnnotationInContext = savedInstanceState.getInt(Utils.EXTRA_EDITING_CONTEXT_INDEX);
 			isCreation = savedInstanceState.getBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION);
 			isEditingOrCreating = true;
@@ -817,8 +849,18 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	}
 
+
 	@Override
 	public void onLocationChanged(Location location) {
+		setProgressBarIndeterminateVisibility(false);
+
+		if(isLocationUpdating) {
+			isLocationUpdating = false;
+			setLocation(location);
+		}
+	}
+
+	private void setLocation(Location location) {
 		double lat = location.getLatitude();
 		double lon = location.getLongitude();
 		GeoPoint position = new GeoPoint(lat, lon);

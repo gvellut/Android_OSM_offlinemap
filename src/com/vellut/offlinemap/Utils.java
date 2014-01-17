@@ -40,6 +40,7 @@ public class Utils {
 
 	public static final int DEFAULT_MARKER_COLOR = Color.CYAN;
 	public static final int DEFAULT_MARKER_SIZE_DP = 24;
+	public static final int LOCATION_UPDATE_TIMEOUT = 10000;
 
 	public static final String EXTRA_IS_NEW = "extra_is_new";
 	public static final String EXTRA_TITLE = "extra_title";
