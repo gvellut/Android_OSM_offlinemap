@@ -18,6 +18,8 @@ import android.widget.Toast;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 
+import com.vellut.offlinemap.tokyo.R;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,14 +31,13 @@ import java.lang.reflect.Field;
 import java.util.List;
 
 public class Utils {
-	public static final String TAG = "TOM";
-
-	public static final String MAP_NAME = "Tokyo.map";
-	public static final double INITIAL_LAT = 35.682817;
-	public static final double INITIAL_LON = 139.74678;
-	public static final byte INITIAL_ZOOM = 14;
-	public static final String OFM_FILE_NAME_FOR_EXPORT = "tokyo";
-
+	public static final String TAG = "OFM";
+	
+	public static String MAP_NAME;
+	public static double INITIAL_LAT;
+	public static double INITIAL_LON;
+	public static byte INITIAL_ZOOM;
+	public static String OFM_FILE_NAME_FOR_EXPORT;
 
 	public static final int DEFAULT_MARKER_COLOR = Color.CYAN;
 	public static final int DEFAULT_MARKER_SIZE_DP = 24;
@@ -66,6 +67,14 @@ public class Utils {
 	public static final String OFM_FILE_EXTENSION = "ofm";
 	public static final Integer[] MAP_ANNOTATION_COLORS = { Color.BLUE, Color.RED,
 			Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA };
+	
+	public static void fillGenericData(Context context) {
+		MAP_NAME = context.getString(R.string.map_file_name);
+		INITIAL_LAT = Double.valueOf(context.getString(R.string.initial_lat));
+		INITIAL_LON = Double.valueOf(context.getString(R.string.initial_lon));
+		INITIAL_ZOOM = (byte) context.getResources().getInteger(R.integer.initial_zoom);
+		OFM_FILE_NAME_FOR_EXPORT = context.getString(R.string.ofm_file_name_for_export);
+	}
 
 	public static Bitmap viewToBitmap(Context c, View view) {
 		view.measure(MeasureSpec.getSize(view.getMeasuredWidth()),

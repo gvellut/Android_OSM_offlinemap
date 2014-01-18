@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Tokyo Carte Offline</string>
-    <string name="action_initial_view">Zoom sur Tokyo</string>
+    <string name="action_initial_view">Zoom sur %1$s</string>
     
     <string name="action_settings">Réglages</string>
     <string name="action_current_location">Position</string>
@@ -25,7 +24,7 @@
     
     <string name="error_empty_title">Le titre ne doit pas être vide</string>
     
-    <string name="welcome"><![CDATA[Bienvenue sur Tokyo Carte Offline !\n
+    <string name="welcome"><![CDATA[Bienvenue sur %1$s !\n
         - Pour ajouter un point, appuyez et maintenez le doigt sur la carte quelques instants. 
         Vous pouvez alors changer le titre, les détails et la couleur du point.\n
         - Appuyez et maintenez le doigt sur un point existant pour le changer. 

@@ -61,7 +61,6 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.vellut.offlinemap.tokyo.R;
 
@@ -99,7 +98,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onCreate(savedInstanceState);
 
 		d("In OnCreate");
-
+		
+		// fill data from generic.xml
+		Utils.fillGenericData(this);
+		
 		locationClient = new LocationClient(this, this, this);
 		restorePreferences();
 		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
@@ -141,6 +143,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.menu_main, menu);
+		MenuItem item = menu.findItem(R.id.action_initial_view);
+		String cityName = getString(R.string.city_name);
+		item.setTitle(getString(R.string.action_initial_view, cityName));
 		return true;
 	}
 
@@ -821,8 +826,13 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void showAlertDialog(int resourceId, boolean showCancel,
 								 OnClickListener okListener, OnClickListener cancelListener) {
+		showAlertDialog(getString(resourceId), showCancel, okListener, cancelListener);
+	}
+	
+	private void showAlertDialog(String message, boolean showCancel,
+			 OnClickListener okListener, OnClickListener cancelListener) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage(resourceId).setPositiveButton(android.R.string.ok,
+		builder.setMessage(message).setPositiveButton(android.R.string.ok,
 				okListener);
 		if (showCancel) {
 			builder.setNegativeButton(android.R.string.cancel, cancelListener);
@@ -833,7 +843,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showWelcomeDialog() {
-		showAlertDialog(R.string.welcome, false, null, null);
+		String app_name = getString(R.string.app_name);
+		showAlertDialog(getString(R.string.welcome, app_name), false, null, null);
 	}
 
 	@Override

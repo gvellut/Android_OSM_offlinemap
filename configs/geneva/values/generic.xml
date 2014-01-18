@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Geneva Offline Map</string>
+    <string name="city_name">Geneva</string>
+
+	<string name="map_file_name">Geneva.map</string>
+	<string name="initial_lat">46.202765</string>
+	<string name="initial_lon">6.145992</string>
+	<integer name="initial_zoom">15</integer>
+	<string name="ofm_file_name_for_export">geneva</string>
+    
+</resources>

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Tokyo Offline Map</string>
-    <string name="action_initial_view">Zoom on Tokyo</string>
+    <string name="action_initial_view">Zoom on %1$s</string>
     
     <string name="action_settings">Settings</string>
     <string name="action_current_location">Position</string>
@@ -25,7 +24,7 @@
     
     <string name="error_empty_title">The title must not be empty</string>
     
-    <string name="welcome"><![CDATA[Welcome to Tokyo Offline Map!\n
+    <string name="welcome"><![CDATA[Welcome to %1$s!\n
         - To add a note, just press and hold somewhere on the map. 
         You can change the title, details and color of the note.\n
         - Press and hold on an existing note to modify it. 

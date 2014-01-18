@@ -1,64 +1,150 @@
 buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:0.7.3'
-    }
+	repositories { mavenCentral() }
+	dependencies {
+		classpath 'com.android.tools.build:gradle:0.7.3'
+		classpath 'de.undercouch:gradle-download-task:0.4'
+	}
 }
 
 apply plugin: 'android'
 
 dependencies {
-    compile fileTree(dir: 'libs', include: '*.jar')
-    compile 'com.google.android.gms:play-services:4.0+'
+	compile fileTree(dir: 'libs', include: '*.jar')
+	compile 'com.google.android.gms:play-services:4.0+'
 }
 
 android {
-    compileSdkVersion 19
-    buildToolsVersion "19.0.0"
+	compileSdkVersion 19
+	buildToolsVersion "19.0.0"
 
-    sourceSets {
-        main {
-            manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs = ['src']
-            resources.srcDirs = ['src']
-            aidl.srcDirs = ['src']
-            renderscript.srcDirs = ['src']
-            res.srcDirs = ['res']
-            assets.srcDirs = ['assets']
-        }
+	sourceSets {
+		main {
+			manifest.srcFile 'AndroidManifest.xml'
+			java.srcDirs = ['src']
+			resources.srcDirs = ['src']
+			aidl.srcDirs = ['src']
+			renderscript.srcDirs = ['src']
+			res.srcDirs = ['res']
+			assets.srcDirs = ['assets']
+		}
 
-        // Move the tests to tests/java, tests/res, etc...
-        instrumentTest.setRoot('tests')
+		// Move the tests to tests/java, tests/res, etc...
+		instrumentTest.setRoot('tests')
 
-        // Move the build types to build-types/<type>
-        // For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
-        // This moves them out of them default location under src/<type>/... which would
-        // conflict with src/ being used by the main source set.
-        // Adding new build types or product flavors should be accompanied
-        // by a similar customization.
-        debug.setRoot('build-types/debug')
-        release.setRoot('build-types/release')
-    }
+		// Move the build types to build-types/<type>
+		// For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
+		// This moves them out of them default location under src/<type>/... which would
+		// conflict with src/ being used by the main source set.
+		// Adding new build types or product flavors should be accompanied
+		// by a similar customization.
+		debug.setRoot('build-types/debug')
+		release.setRoot('build-types/release')
+	}
 
-    signingConfigs {
-        release {
-            File signFile = rootProject.file('sign.properties')
-            if (signFile.exists()) {
-                Properties p = new Properties()
-                p.load(new FileInputStream(signFile))
-                storeFile file(p.storeFile)
-                storePassword p.storePassword
-                keyAlias p.keyAlias
-                keyPassword p.keyPassword
-            }
-        }
-    }
+	signingConfigs {
+		release {
+			File signFile = project.file('sign.properties')
+			if (signFile.exists()) {
+				Properties p = new Properties()
+				p.load(new FileInputStream(signFile))
+				storeFile file(p.storeFile)
+				storePassword p.storePassword
+				keyAlias p.keyAlias
+				keyPassword p.keyPassword
+			}
+		}
+	}
 
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
+	buildTypes {
+		release { signingConfig signingConfigs.release }
+	}
 }
+
+if(project.hasProperty("mapConfiguration")) {
+	ext.configFolder="configs/${mapConfiguration}"
+	ext.dataFolder = "${configFolder}/data"
+	OFMUtils.loadProperties(project, "${configFolder}/config.properties")
+	OFMUtils.loadProperties(project, "local.properties")
+
+
+	task configureAndroidProject { dependsOn "copyMapFile", "copyGenericXml", 
+		"updateVersion", "updateAppPackage" }
+
+	task copyMapFile << {
+		ant.delete() {
+			fileset(dir: 'assets') { include(name: '*.map') }
+		}
+		copy{
+			from "${dataFolder}/${map_file_name}"
+			into "assets"
+		}
+	}
+
+	task copyGenericXml << {
+		ant.copy(toDir: "res", overwrite: true) {
+			fileSet(dir:configFolder){ include(name:"values*/**") }
+		}
+	}
+
+	task updateVersion << {
+		ant.replaceregexp(
+				file:"AndroidManifest.xml",
+				match:"android:versionCode=\"(.*?)\"",
+				replace:"android:versionCode=\"${version_code}\""
+				)
+
+		ant.replaceregexp(
+				file:"AndroidManifest.xml",
+				match:"android:versionName=\"(.*?)\"",
+				replace:"android:versionName=\"${version_name}\""
+				)
+	}
+	
+	task updateAppPackage << {
+		ant.replaceregexp(
+			file:"AndroidManifest.xml",
+			match:"package=\"com.vellut.offlinemap.(.*?)\"",
+			replace:"package=\"com.vellut.offlinemap.${mapConfiguration}\""
+			)
+		
+		ant.replaceregexp(
+			match:"com.vellut.offlinemap.(.*?).R",
+			replace:"com.vellut.offlinemap.${mapConfiguration}.R"
+			) {
+			fileset(dir:"src") {
+				 include(name:"**/*.java")
+			}
+		}
+		
+		
+	}
+
+	task updateMapData { dependsOn "downloadOSMData","convertOSMDataToMap" }
+
+	task downloadOSMData(type: de.undercouch.gradle.tasks.download.Download) {
+		src pbf_download_url
+		dest "${dataFolder}/${pbf_file_name}"
+
+		dependsOn "prepareMapFolder"
+	}
+
+	task convertOSMDataToMap(type: Exec) {
+		// bin/osmosis --rb file=../Tokyo.osm.pbf --mapfile-writer file=../Tokyo.map
+		doFirst {
+			if(!file("${dataFolder}/${pbf_file_name}").exists()) {
+				throw new StopActionException("${dataFolder}/${pbf_file_name} does not exist")
+			}
+		}
+		String osmosisPath = project["osmosis.dir"]
+		workingDir "${dataFolder}"
+		commandLine("${osmosisPath}/bin/osmosis", "--rb", "file=${pbf_file_name}",
+				"--mapfile-writer","file=${map_file_name}")
+	}
+
+	convertOSMDataToMap.mustRunAfter downloadOSMData
+
+	task prepareMapFolder << {
+		file(dataFolder).mkdirs()
+	}
+}
+

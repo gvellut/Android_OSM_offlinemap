@@ -6,6 +6,10 @@
 /.classpath
 /sign.properties
 /build
+/buildSrc/build
+/buildSrc/.gradle
 /local.properties
 /android_keystore
 /*.iml
+/configs/*/data
+/.gradle
