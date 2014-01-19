@@ -58,6 +58,7 @@ public class Utils {
 	public static final String PREF_MAP_DATA = "pref_map_data";
 	public static final String PREF_SAVED_LOCATIONS = "pref_saved_locations";
 	public static final String PREF_IS_FIRST_TIME_RUN = "pref_is_first_time_run";
+	public static final String PREF_CURRENT_POSITION = "pref_current_position";
 
 	public static final int CODE_MAP_ANNOTATION_EDIT_REQUEST = 150;
 	public static final int CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST = 151;

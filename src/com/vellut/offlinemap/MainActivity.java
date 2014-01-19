@@ -77,6 +77,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private MapData mapData;
 	private ArrayList<MapAnnotation> mapAnnotations;
+	private CurrentPosition currentPosition;
 
 	private ArrayItemizedOverlay currentPositionOverlay;
 	private ArrayItemizedOverlay mapAnnotationsOverlay;
@@ -93,8 +94,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private MapAnnotation currentMapAnnotationForBubble;
 
 	private CurrentPositionDrawable currentPositionWithAccuracyMarker;
-	private GeoPoint currentPosition;
-	private float currentPositionAccuracy;
 
 	private boolean isFirstTimeRun;
 	private boolean aBoolean;
@@ -233,7 +232,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 						Location location = locationClient.getLastLocation();
 						if (location != null) {
-							setLocation(location);
+							setCurrentPosition(location);
 						} else {
 							showAlertDialog(R.string.timeout_location, false,
 									null, null);
@@ -319,6 +318,18 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			mapAnnotations = new ArrayList<MapAnnotation>();
 		}
 
+		String sCurrentPosition = settings.getString(Utils.PREF_CURRENT_POSITION, null);
+		if (sCurrentPosition != null) {
+			try {
+				currentPosition = (CurrentPosition) deserializeFromString(sCurrentPosition,
+						CurrentPosition.class);
+			} catch (Exception ex) {
+				Log.e(Utils.TAG, "Error getting saved MapData", ex);
+			}
+		} else {
+			currentPosition = null;
+		}
+		
 		isFirstTimeRun = settings
 				.getBoolean(Utils.PREF_IS_FIRST_TIME_RUN, true);
 	}
@@ -335,6 +346,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}.getType();
 		editor.putString(Utils.PREF_SAVED_LOCATIONS,
 				serializeToString(mapAnnotations, type));
+
+		editor.putString(Utils.PREF_CURRENT_POSITION,
+				serializeToString(currentPosition, CurrentPosition.class));
 
 		editor.putBoolean(Utils.PREF_IS_FIRST_TIME_RUN, isFirstTimeRun);
 
@@ -392,24 +406,18 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		Drawable currentPositionMarker = getResources().getDrawable(
 				R.drawable.ic_maps_indicator_current_position_anim1);
-		currentPositionWithAccuracyMarker = new CurrentPositionDrawable(mapView,
-				currentPositionMarker, true, Color.BLUE);
+		currentPositionWithAccuracyMarker = new CurrentPositionDrawable(
+				mapView, currentPositionMarker, true, Color.BLUE);
 		currentPositionOverlay = new ArrayItemizedOverlay(
 				currentPositionWithAccuracyMarker, false);
 		mapView.getOverlays().add(currentPositionOverlay);
 
-		// FIXME remove
-		// mapAnnotations.clear();
-		// FIXME dummy annotation
-		// MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
-		// Utils.INITIAL_LON, Color.YELLOW);
-		// mapAnnotation1.title = "Annotation 1";
-		// mapAnnotation1.description = "Description for Annot1";
-		// mapAnnotation1.isBookmarked = true;
-		// mapAnnotations.add(mapAnnotation1);
-
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
+		}
+		
+		if(currentPosition != null) {
+			showCurrentPosition();
 		}
 	}
 
@@ -892,34 +900,44 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		if (isLocationUpdating) {
 			isLocationUpdating = false;
-			setLocation(location);
+			setCurrentPosition(location);
 		}
 	}
 
-	private void setLocation(Location location) {
-		double lat = location.getLatitude();
-		double lon = location.getLongitude();
+	private void setCurrentPosition(Location location) {
+		currentPosition = new CurrentPosition();
 		
-		if(location.hasAccuracy()) {
-			currentPositionAccuracy = location.getAccuracy();
-		} else {
-			currentPositionAccuracy = 0;
-		}
-		currentPositionWithAccuracyMarker.setAccuracy(currentPositionAccuracy);
+		currentPosition.latitude = location.getLatitude();
+		currentPosition.longitude = location.getLongitude();
 
-		currentPosition = new GeoPoint(lat, lon);
+		if (location.hasAccuracy()) {
+			currentPosition.accuracy = location.getAccuracy();
+		} else {
+			currentPosition.accuracy = 0;
+		}
+
+		showCurrentPosition();
+	}
+	
+	private void showCurrentPosition() {
+		GeoPoint position = new GeoPoint(currentPosition.latitude, 
+				currentPosition.longitude);
 		byte zoom = mapView.getMapPosition().getZoomLevel();
 		if (zoom < 17) {
 			zoom = 17;
 		}
 
-		mapView.getController().setCenter(currentPosition);
+		mapView.getController().setCenter(position);
 		mapView.getController().setZoom(zoom);
 
+		currentPositionWithAccuracyMarker.setAccuracy(currentPosition.accuracy);
+		
 		currentPositionOverlay.clear();
 		OverlayItem overlay = new OverlayItem();
-		overlay.setPoint(currentPosition);
+		overlay.setPoint(position);
 		currentPositionOverlay.addItem(overlay);
 	}
+	
+	
 
 }
