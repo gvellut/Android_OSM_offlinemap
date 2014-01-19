@@ -417,7 +417,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}
 		
 		if(currentPosition != null) {
-			showCurrentPosition();
+			addCurrentPositionMarker();
 		}
 	}
 
@@ -917,6 +917,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}
 
 		showCurrentPosition();
+		addCurrentPositionMarker();
 	}
 	
 	private void showCurrentPosition() {
@@ -929,7 +930,13 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		mapView.getController().setCenter(position);
 		mapView.getController().setZoom(zoom);
-
+	}
+	
+	
+	private void addCurrentPositionMarker() {
+		GeoPoint position = new GeoPoint(currentPosition.latitude, 
+				currentPosition.longitude);
+		
 		currentPositionWithAccuracyMarker.setAccuracy(currentPosition.accuracy);
 		
 		currentPositionOverlay.clear();
@@ -937,7 +944,6 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		overlay.setPoint(position);
 		currentPositionOverlay.addItem(overlay);
 	}
-	
 	
 
 }
