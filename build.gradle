@@ -71,6 +71,7 @@ if(project.hasProperty("mapConfiguration")) {
 		"updateVersion", "updateAppPackage" }
 
 	task copyMapFile << {
+		file("assets").mkdirs()
 		ant.delete() {
 			fileset(dir: 'assets') { include(name: '*.map') }
 		}

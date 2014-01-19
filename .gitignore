@@ -13,3 +13,4 @@
 /*.iml
 /configs/*/data
 /.gradle
+/assets/*.map
