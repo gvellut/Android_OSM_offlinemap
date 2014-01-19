@@ -34,7 +34,7 @@
 
     <string-array name="items_export_import">
         <item>Exporter les points vers un fichier</item>
-        <item>Importer les points vers un fichier</item>
+        <item>Importer les points depuis un fichier</item>
     </string-array>
 
 
