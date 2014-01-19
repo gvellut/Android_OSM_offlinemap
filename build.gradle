@@ -67,7 +67,7 @@ if(project.hasProperty("mapConfiguration")) {
 	OFMUtils.loadProperties(project, "local.properties")
 
 
-	task configureAndroidProject { dependsOn "copyMapFile", "copyGenericXml", 
+	task configureAndroidProject { dependsOn "copyMapFile", "copyGenericXml", "copyIcons",
 		"updateVersion", "updateAppPackage" }
 
 	task copyMapFile << {
@@ -84,6 +84,43 @@ if(project.hasProperty("mapConfiguration")) {
 	task copyGenericXml << {
 		ant.copy(toDir: "res", overwrite: true) {
 			fileSet(dir:configFolder){ include(name:"values*/**") }
+		}
+	}
+	
+	task copyIcons << {
+		copy {
+			from("${configFolder}/icons/hdpi.png") {
+				rename ".*", "ic_launcher.png"
+			}
+			into "res/drawable-hdpi"
+		}
+		
+		copy {
+			from("${configFolder}/icons/mdpi.png") {
+				rename ".*", "ic_launcher.png"
+			}
+			into "res/drawable-mdpi"
+		}
+		
+		copy {
+			from("${configFolder}/icons/xhdpi.png") {
+				rename ".*", "ic_launcher.png"
+			}
+			into "res/drawable-xhdpi"
+		}
+		
+		copy {
+			from("${configFolder}/icons/xxhdpi.png") {
+				rename ".*", "ic_launcher.png"
+			}
+			into "res/drawable-xxhdpi"
+		}
+		
+		copy {
+			from("${configFolder}/icons/web.png") {
+				rename ".*", "ic_launcher-web2.png"
+			}
+			into "."
 		}
 	}
 
