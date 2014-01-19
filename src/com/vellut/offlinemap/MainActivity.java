@@ -18,6 +18,7 @@ import java.util.Date;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
+import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
@@ -34,6 +35,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -90,6 +92,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private MapAnnotation currentMapAnnotationForBubble;
 
+	private CurrentPositionDrawable currentPositionWithAccuracyMarker;
+	private GeoPoint currentPosition;
+	private float currentPositionAccuracy;
+
 	private boolean isFirstTimeRun;
 	private boolean aBoolean;
 
@@ -98,10 +104,10 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onCreate(savedInstanceState);
 
 		d("In OnCreate");
-		
+
 		// fill data from generic.xml
 		Utils.fillGenericData(this);
-		
+
 		locationClient = new LocationClient(this, this, this);
 		restorePreferences();
 		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
@@ -152,23 +158,23 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case R.id.action_current_location:
-				zoomToCurrentPosition();
-				return true;
-			case R.id.action_initial_view:
-				zoomToInitialPosition();
-				return true;
-			case R.id.action_export_import:
-				showExportImportDialog();
-				return true;
-			default:
-				return super.onOptionsItemSelected(item);
+		case R.id.action_current_location:
+			zoomToCurrentPosition();
+			return true;
+		case R.id.action_initial_view:
+			zoomToInitialPosition();
+			return true;
+		case R.id.action_export_import:
+			showExportImportDialog();
+			return true;
+		default:
+			return super.onOptionsItemSelected(item);
 		}
 	}
 
 	@Override
 	public void onCreateContextMenu(ContextMenu menu, View v,
-									ContextMenuInfo menuInfo) {
+			ContextMenuInfo menuInfo) {
 		super.onCreateContextMenu(menu, v, menuInfo);
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.menu_context, menu);
@@ -181,17 +187,17 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case R.id.action_edit_map_annotation:
-				editMapAnnotation();
-				return true;
-			case R.id.action_star_map_annotation:
-				starMapAnnotation();
-				return true;
-			case R.id.action_delete_map_annotation:
-				deleteMapAnnotation(true);
-				return true;
-			default:
-				return super.onContextItemSelected(item);
+		case R.id.action_edit_map_annotation:
+			editMapAnnotation();
+			return true;
+		case R.id.action_star_map_annotation:
+			starMapAnnotation();
+			return true;
+		case R.id.action_delete_map_annotation:
+			deleteMapAnnotation(true);
+			return true;
+		default:
+			return super.onContextItemSelected(item);
 		}
 	}
 
@@ -213,7 +219,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 			isLocationUpdating = true;
 
-			new CountDownTimer(Utils.LOCATION_UPDATE_TIMEOUT, Utils.LOCATION_UPDATE_TIMEOUT) {
+			new CountDownTimer(Utils.LOCATION_UPDATE_TIMEOUT,
+					Utils.LOCATION_UPDATE_TIMEOUT) {
 				public void onTick(long millisUntilFinished) {
 				}
 
@@ -228,7 +235,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 						if (location != null) {
 							setLocation(location);
 						} else {
-							showAlertDialog(R.string.timeout_location, false, null, null);
+							showAlertDialog(R.string.timeout_location, false,
+									null, null);
 						}
 					}
 				}
@@ -247,17 +255,18 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void showExportImportDialog() {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setItems(R.array.items_export_import, new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int itemIndex) {
-				if (itemIndex == 0) {
-					// export
-					startExportMapAnnotationsToFile();
-				} else {
-					// import
-					startImportMapAnnotationsFromFile();
-				}
-			}
-		});
+		builder.setItems(R.array.items_export_import,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int itemIndex) {
+						if (itemIndex == 0) {
+							// export
+							startExportMapAnnotationsToFile();
+						} else {
+							// import
+							startImportMapAnnotationsFromFile();
+						}
+					}
+				});
 		builder.setNegativeButton(android.R.string.cancel, null);
 
 		// Create the AlertDialog object and return it
@@ -383,18 +392,21 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		Drawable currentPositionMarker = getResources().getDrawable(
 				R.drawable.ic_maps_indicator_current_position_anim1);
-		currentPositionOverlay = new ArrayItemizedOverlay(currentPositionMarker);
+		currentPositionWithAccuracyMarker = new CurrentPositionDrawable(mapView,
+				currentPositionMarker, true, Color.BLUE);
+		currentPositionOverlay = new ArrayItemizedOverlay(
+				currentPositionWithAccuracyMarker, false);
 		mapView.getOverlays().add(currentPositionOverlay);
 
 		// FIXME remove
-//		mapAnnotations.clear();
+		// mapAnnotations.clear();
 		// FIXME dummy annotation
-//		MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
-//				Utils.INITIAL_LON, Color.YELLOW);
-//		mapAnnotation1.title = "Annotation 1";
-//		mapAnnotation1.description = "Description for Annot1";
-//		mapAnnotation1.isBookmarked = true;
-//		mapAnnotations.add(mapAnnotation1);
+		// MapAnnotation mapAnnotation1 = new MapAnnotation(Utils.INITIAL_LAT,
+		// Utils.INITIAL_LON, Color.YELLOW);
+		// mapAnnotation1.title = "Annotation 1";
+		// mapAnnotation1.description = "Description for Annot1";
+		// mapAnnotation1.isBookmarked = true;
+		// mapAnnotations.add(mapAnnotation1);
 
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
@@ -462,114 +474,116 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
-			case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
-				if (resultCode == RESULT_OK) {
-					mapAnnotationInContext.title = data.getExtras().getString(
-							Utils.EXTRA_TITLE);
-					mapAnnotationInContext.description = data.getExtras()
-							.getString(Utils.EXTRA_DESCRIPTION);
-					int color = data.getExtras().getInt(Utils.EXTRA_COLOR);
-					if (color != mapAnnotationInContext.color) {
-						mapAnnotationInContext.color = color;
-						overlayItemInContext.setMarker(markerFactory
-								.getMarker(mapAnnotationInContext));
-						mapAnnotationsOverlay.requestRedraw();
-					}
-					updateBubbleForMapAnnotation(mapAnnotationInContext);
-				} else {
-					if (isCreation) {
-						mapAnnotations.remove(mapAnnotationInContext);
-						mapAnnotationsOverlay.removeItem(overlayItemInContext);
-					}
+		case Utils.CODE_MAP_ANNOTATION_EDIT_REQUEST:
+			if (resultCode == RESULT_OK) {
+				mapAnnotationInContext.title = data.getExtras().getString(
+						Utils.EXTRA_TITLE);
+				mapAnnotationInContext.description = data.getExtras()
+						.getString(Utils.EXTRA_DESCRIPTION);
+				int color = data.getExtras().getInt(Utils.EXTRA_COLOR);
+				if (color != mapAnnotationInContext.color) {
+					mapAnnotationInContext.color = color;
+					overlayItemInContext.setMarker(markerFactory
+							.getMarker(mapAnnotationInContext));
+					mapAnnotationsOverlay.requestRedraw();
 				}
-
-				cleanUpContextInformation();
-
-				break;
-
-			case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
-				if (aBoolean) {
-					d("PlayServices Resolved");
-				} else {
-					d("PlayServices Not Resolved");
+				updateBubbleForMapAnnotation(mapAnnotationInContext);
+			} else {
+				if (isCreation) {
+					mapAnnotations.remove(mapAnnotationInContext);
+					mapAnnotationsOverlay.removeItem(overlayItemInContext);
 				}
-				break;
+			}
 
-			case Utils.CODE_EXPORT_FILE_EXPLORER_REQUEST:
-				if (resultCode == RESULT_OK) {
-					String dirPath = data.getExtras().getString(
-							Utils.EXTRA_FILE_PATH);
-					File file = new File(dirPath);
-					if (file.canWrite()) {
-						Date now = new Date();
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
-						String fileName = Utils.OFM_FILE_NAME_FOR_EXPORT + "-" +
-								sdf.format(now) + "." +
-								Utils.OFM_FILE_EXTENSION;
-						file = new File(dirPath, fileName);
-						Type type = new TypeToken<ArrayList<MapAnnotation>>() {
-						}.getType();
-						String ofmData = serializeToString(mapAnnotations, type);
-						OutputStream os = null;
-						try {
-							os = new BufferedOutputStream(new FileOutputStream(file));
-							os.write(ofmData.getBytes("UTF-8"));
-							Toast.makeText(this, getString(R.string.export_done),
-									Toast.LENGTH_SHORT).show();
-						} catch (IOException ex) {
-							e("Error exporting", ex);
-						} finally {
-							if (os != null) {
-								try {
-									os.close();
-								} catch (IOException e) {
-								}
-							}
-						}
-					} else {
-						showAlertDialog(R.string.cannot_write, false, null, null);
-					}
-				}
-				break;
+			cleanUpContextInformation();
 
-			case Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST:
-				if (resultCode == RESULT_OK) {
-					String filePath = data.getExtras().getString(
-							Utils.EXTRA_FILE_PATH);
-					File file = new File(filePath);
+			break;
 
-					String sSavedLocations;
-					InputStream is = null;
+		case Utils.CODE_CONNECTION_FAILURE_RESOLUTION_REQUEST:
+			if (aBoolean) {
+				d("PlayServices Resolved");
+			} else {
+				d("PlayServices Not Resolved");
+			}
+			break;
+
+		case Utils.CODE_EXPORT_FILE_EXPLORER_REQUEST:
+			if (resultCode == RESULT_OK) {
+				String dirPath = data.getExtras().getString(
+						Utils.EXTRA_FILE_PATH);
+				File file = new File(dirPath);
+				if (file.canWrite()) {
+					Date now = new Date();
+					SimpleDateFormat sdf = new SimpleDateFormat(
+							"yyyy-MM-dd-HHmmss");
+					String fileName = Utils.OFM_FILE_NAME_FOR_EXPORT + "-"
+							+ sdf.format(now) + "." + Utils.OFM_FILE_EXTENSION;
+					file = new File(dirPath, fileName);
+					Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+					}.getType();
+					String ofmData = serializeToString(mapAnnotations, type);
+					OutputStream os = null;
 					try {
-						is = new BufferedInputStream(new FileInputStream(new File(filePath)));
-						sSavedLocations = Utils.convertStreamToString(is);
-						Type type = new TypeToken<ArrayList<MapAnnotation>>() {
-						}.getType();
-
-						mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
-								sSavedLocations, type);
-
-						clearBubble();
-						mapAnnotationsOverlay.clear();
-						for (MapAnnotation mapAnnotation : mapAnnotations) {
-							addMarker(mapAnnotation);
-						}
-						mapAnnotationsOverlay.requestRedraw();
-
-						Toast.makeText(this, getString(R.string.import_done),
+						os = new BufferedOutputStream(
+								new FileOutputStream(file));
+						os.write(ofmData.getBytes("UTF-8"));
+						Toast.makeText(this, getString(R.string.export_done),
 								Toast.LENGTH_SHORT).show();
 					} catch (IOException ex) {
 						e("Error exporting", ex);
 					} finally {
-						if (is != null) {
+						if (os != null) {
 							try {
-								is.close();
+								os.close();
 							} catch (IOException e) {
 							}
 						}
 					}
+				} else {
+					showAlertDialog(R.string.cannot_write, false, null, null);
 				}
-				break;
+			}
+			break;
+
+		case Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST:
+			if (resultCode == RESULT_OK) {
+				String filePath = data.getExtras().getString(
+						Utils.EXTRA_FILE_PATH);
+				File file = new File(filePath);
+
+				String sSavedLocations;
+				InputStream is = null;
+				try {
+					is = new BufferedInputStream(new FileInputStream(new File(
+							filePath)));
+					sSavedLocations = Utils.convertStreamToString(is);
+					Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+					}.getType();
+
+					mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
+							sSavedLocations, type);
+
+					clearBubble();
+					mapAnnotationsOverlay.clear();
+					for (MapAnnotation mapAnnotation : mapAnnotations) {
+						addMarker(mapAnnotation);
+					}
+					mapAnnotationsOverlay.requestRedraw();
+
+					Toast.makeText(this, getString(R.string.import_done),
+							Toast.LENGTH_SHORT).show();
+				} catch (IOException ex) {
+					e("Error exporting", ex);
+				} finally {
+					if (is != null) {
+						try {
+							is.close();
+						} catch (IOException e) {
+						}
+					}
+				}
+			}
+			break;
 
 		}
 
@@ -591,9 +605,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						Intent intent = new Intent();
-						intent.setClass(MainActivity.this, FileExplorerActivity.class);
-						intent.putExtra(Utils.EXTRA_EXTENSION_FILTER, Utils.OFM_FILE_EXTENSION);
-						startActivityForResult(intent, Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST);
+						intent.setClass(MainActivity.this,
+								FileExplorerActivity.class);
+						intent.putExtra(Utils.EXTRA_EXTENSION_FILTER,
+								Utils.OFM_FILE_EXTENSION);
+						startActivityForResult(intent,
+								Utils.CODE_IMPORT_FILE_EXPLORER_REQUEST);
 					}
 				});
 		builder.create().show();
@@ -623,7 +640,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		textViewTitle.setText(mapAnnotation.title);
 		TextView textViewDescription = (TextView) bubbleView
 				.findViewById(R.id.textViewDescription);
-		if (mapAnnotation.description == null || mapAnnotation.description.isEmpty()) {
+		if (mapAnnotation.description == null
+				|| mapAnnotation.description.isEmpty()) {
 			((ViewGroup) bubbleView).removeView(textViewDescription);
 		} else {
 			textViewDescription.setText(mapAnnotation.description);
@@ -705,25 +723,31 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		isEditingOrCreating = false;
 	}
 
-
 	@Override
 	public void onSaveInstanceState(Bundle outstate) {
 		d("SAVEINSTANCESTATE " + isEditingOrCreating);
 		if (isEditingOrCreating) {
-			outstate.putInt(Utils.EXTRA_EDITING_CONTEXT_INDEX, indexMapAnnotationInContext);
-			outstate.putBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION, isCreation);
+			outstate.putInt(Utils.EXTRA_EDITING_CONTEXT_INDEX,
+					indexMapAnnotationInContext);
+			outstate.putBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION,
+					isCreation);
 		} // else do not care
 	}
 
 	private void restoreState(Bundle savedInstanceState) {
 		d("RESTORESTATE");
-		if (savedInstanceState.keySet().contains(Utils.EXTRA_EDITING_CONTEXT_INDEX)) {
-			indexMapAnnotationInContext = savedInstanceState.getInt(Utils.EXTRA_EDITING_CONTEXT_INDEX);
-			isCreation = savedInstanceState.getBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION);
+		if (savedInstanceState.keySet().contains(
+				Utils.EXTRA_EDITING_CONTEXT_INDEX)) {
+			indexMapAnnotationInContext = savedInstanceState
+					.getInt(Utils.EXTRA_EDITING_CONTEXT_INDEX);
+			isCreation = savedInstanceState
+					.getBoolean(Utils.EXTRA_EDITING_CONTEXT_IS_CREATION);
 			isEditingOrCreating = true;
 
-			mapAnnotationInContext = mapAnnotations.get(indexMapAnnotationInContext);
-			overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, indexMapAnnotationInContext);
+			mapAnnotationInContext = mapAnnotations
+					.get(indexMapAnnotationInContext);
+			overlayItemInContext = Utils.getItem(mapAnnotationsOverlay,
+					indexMapAnnotationInContext);
 		}
 	}
 
@@ -825,12 +849,13 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showAlertDialog(int resourceId, boolean showCancel,
-								 OnClickListener okListener, OnClickListener cancelListener) {
-		showAlertDialog(getString(resourceId), showCancel, okListener, cancelListener);
+			OnClickListener okListener, OnClickListener cancelListener) {
+		showAlertDialog(getString(resourceId), showCancel, okListener,
+				cancelListener);
 	}
-	
+
 	private void showAlertDialog(String message, boolean showCancel,
-			 OnClickListener okListener, OnClickListener cancelListener) {
+			OnClickListener okListener, OnClickListener cancelListener) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(message).setPositiveButton(android.R.string.ok,
 				okListener);
@@ -844,7 +869,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void showWelcomeDialog() {
 		String app_name = getString(R.string.app_name);
-		showAlertDialog(getString(R.string.welcome, app_name), false, null, null);
+		showAlertDialog(getString(R.string.welcome, app_name), false, null,
+				null);
 	}
 
 	@Override
@@ -860,12 +886,11 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	}
 
-
 	@Override
 	public void onLocationChanged(Location location) {
 		setProgressBarIndeterminateVisibility(false);
 
-		if(isLocationUpdating) {
+		if (isLocationUpdating) {
 			isLocationUpdating = false;
 			setLocation(location);
 		}
@@ -874,17 +899,26 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private void setLocation(Location location) {
 		double lat = location.getLatitude();
 		double lon = location.getLongitude();
-		GeoPoint position = new GeoPoint(lat, lon);
-		byte zoom = mapView.getMapPosition().getZoomLevel();
-		if (zoom < 15) {
-			zoom = 15;
+		
+		if(location.hasAccuracy()) {
+			currentPositionAccuracy = location.getAccuracy();
+		} else {
+			currentPositionAccuracy = 0;
 		}
-		mapView.getController().setCenter(position);
+		currentPositionWithAccuracyMarker.setAccuracy(currentPositionAccuracy);
+
+		currentPosition = new GeoPoint(lat, lon);
+		byte zoom = mapView.getMapPosition().getZoomLevel();
+		if (zoom < 17) {
+			zoom = 17;
+		}
+
+		mapView.getController().setCenter(currentPosition);
 		mapView.getController().setZoom(zoom);
 
 		currentPositionOverlay.clear();
 		OverlayItem overlay = new OverlayItem();
-		overlay.setPoint(position);
+		overlay.setPoint(currentPosition);
 		currentPositionOverlay.addItem(overlay);
 	}
 
