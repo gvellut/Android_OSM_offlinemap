@@ -118,7 +118,7 @@ if(project.hasProperty("mapConfiguration")) {
 		
 		copy {
 			from("${configFolder}/icons/web.png") {
-				rename ".*", "ic_launcher-web2.png"
+				rename ".*", "ic_launcher-web.png"
 			}
 			into "."
 		}
