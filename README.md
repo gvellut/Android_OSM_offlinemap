@@ -2,6 +2,8 @@ Simple  Offline Maps with the MapsForge library
 
 Map Data: OpenStreetMap (exported from http://download.bbbike.org/osm/bbbike/Tokyo/)
 
+License: GPLv3
+
 Although it was originally focused on Tokyo, this project now includes a way to generate an offline map application for basically any city (as long as an OSM export in PBF format is available, either created by yourself or accessible through an URL). It can be done by configuring a few values (see the configs folder at the root of the project).
 
 Currently there are configurations for:
@@ -18,7 +20,7 @@ Check out the apps on Google Play Store:
 
 - Clone the project or download a source zip.
 
-- Create a local.properties file at the root of the project. In it, define properties sdk.dir and a osmosis.dir. For example,
+- Create a local.properties file at the root of the project. In it, define properties sdk.dir and a osmosis.dir. For example:
 sdk.dir=/Applications/adt-bundle-mac-x86_64-20131030/sdk
 osmosis.dir=/Users/guilhem/Documents/libraries/osmosis
 
@@ -51,4 +53,3 @@ A release apk will be creating in the build/apk folder
 Import the project into the Eclipse ADT using the "Android > Import existing code into workspace" tool.
 
 
-License: GPLv3
