@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <string name="welcome"><![CDATA[Bienvenue sur %1$s !\n
+        - Cette carte affiche tous les restaurants du centre de Tokyo.
+        - Les couleurs pour chaque restaurant sont tirés du score du restaurant sur le site Ramen DB.
+        - Appuyez et maintenez le doigt sur un restaurant pour lui donner un icône spécial.\n
+        - Pour visualiser quelques détails sur un restaurant, appuyer simplement dessus.]]></string>
+</resources>
