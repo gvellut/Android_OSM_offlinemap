@@ -67,13 +67,17 @@ if(project.hasProperty("mapConfiguration")) {
 	OFMUtils.loadProperties(project, "local.properties")
 
 
-	task configureAndroidProject { dependsOn "copyMapFile", "copyGenericXml", "copyIcons",
-		"updateVersion", "updateAppPackage" }
+	task configureAndroidProject {
+		dependsOn "copyMapFile", "copyGenericXml", "copyIcons",
+		"updateVersion", "updateAppPackage"
+	}
 
 	task copyMapFile << {
 		file("assets").mkdirs()
 		ant.delete() {
-			fileset(dir: 'assets') { include(name: '*.map') }
+			fileset(dir: 'assets') {
+				include(name: '*.map')
+			}
 		}
 		copy{
 			from "${dataFolder}/${map_file_name}"
@@ -83,10 +87,12 @@ if(project.hasProperty("mapConfiguration")) {
 
 	task copyGenericXml << {
 		ant.copy(toDir: "res", overwrite: true) {
-			fileSet(dir:configFolder){ include(name:"values*/**") }
+			fileSet(dir:configFolder){
+				include(name:"values*/**")
+			}
 		}
 	}
-	
+
 	task copyIcons << {
 		copy {
 			from("${configFolder}/icons/hdpi.png") {
@@ -94,28 +100,28 @@ if(project.hasProperty("mapConfiguration")) {
 			}
 			into "res/drawable-hdpi"
 		}
-		
+
 		copy {
 			from("${configFolder}/icons/mdpi.png") {
 				rename ".*", "ic_launcher.png"
 			}
 			into "res/drawable-mdpi"
 		}
-		
+
 		copy {
 			from("${configFolder}/icons/xhdpi.png") {
 				rename ".*", "ic_launcher.png"
 			}
 			into "res/drawable-xhdpi"
 		}
-		
+
 		copy {
 			from("${configFolder}/icons/xxhdpi.png") {
 				rename ".*", "ic_launcher.png"
 			}
 			into "res/drawable-xxhdpi"
 		}
-		
+
 		copy {
 			from("${configFolder}/icons/web.png") {
 				rename ".*", "ic_launcher-web.png"
@@ -126,38 +132,54 @@ if(project.hasProperty("mapConfiguration")) {
 
 	task updateVersion << {
 		ant.replaceregexp(
-				file:"AndroidManifest.xml",
-				match:"android:versionCode=\"(.*?)\"",
-				replace:"android:versionCode=\"${version_code}\""
-				)
+		file:"AndroidManifest.xml",
+		match:"android:versionCode=\"(.*?)\"",
+		replace:"android:versionCode=\"${version_code}\""
+		)
 
 		ant.replaceregexp(
-				file:"AndroidManifest.xml",
-				match:"android:versionName=\"(.*?)\"",
-				replace:"android:versionName=\"${version_name}\""
-				)
+		file:"AndroidManifest.xml",
+		match:"android:versionName=\"(.*?)\"",
+		replace:"android:versionName=\"${version_name}\""
+		)
 	}
-	
+
 	task updateAppPackage << {
 		ant.replaceregexp(
-			file:"AndroidManifest.xml",
-			match:"package=\"com.vellut.offlinemap.(.*?)\"",
-			replace:"package=\"com.vellut.offlinemap.${mapConfiguration}\""
-			)
-		
+		file:"AndroidManifest.xml",
+		match:"package=\"com.vellut.offlinemap.(.*?)\"",
+		replace:"package=\"com.vellut.offlinemap.${mapConfiguration}\""
+		)
+
 		ant.replaceregexp(
-			match:"com.vellut.offlinemap.(.*?).R",
-			replace:"com.vellut.offlinemap.${mapConfiguration}.R"
-			) {
+		match:"com.vellut.offlinemap.(.*?).R",
+		replace:"com.vellut.offlinemap.${mapConfiguration}.R"
+		) {
 			fileset(dir:"src") {
-				 include(name:"**/*.java")
+				include(name:"**/*.java")
 			}
 		}
-		
-		
 	}
 
-	task updateMapData { dependsOn "downloadOSMData","convertOSMDataToMap" }
+	if(project.hasProperty("datafetch")) {
+		task updatePointData {
+			dependsOn "crawlPointData", "createOFMFromPointData"
+		}
+
+		task crawlPointData << {
+			Class.forName(datafetch, false, Thread.currentThread().contextClassLoader).crawl(file(dataFolder))
+		}
+
+		task createOFMFromPointData << {
+			Class.forName(datafetch, false, Thread.currentThread().contextClassLoader).analyze(file(dataFolder), datafile)
+		}
+
+		createOFMFromPointData.mustRunAfter crawlPointData
+	}
+
+	task updateMapData {
+		dependsOn "downloadOSMData","convertOSMDataToMap"
+	}
 
 	task downloadOSMData(type: de.undercouch.gradle.tasks.download.Download) {
 		src pbf_download_url
@@ -176,7 +198,7 @@ if(project.hasProperty("mapConfiguration")) {
 		String osmosisPath = project["osmosis.dir"]
 		workingDir "${dataFolder}"
 		commandLine("${osmosisPath}/bin/osmosis", "--rb", "file=${pbf_file_name}",
-				"--mapfile-writer","file=${map_file_name}")
+		"--mapfile-writer","file=${map_file_name}")
 	}
 
 	convertOSMDataToMap.mustRunAfter downloadOSMData
