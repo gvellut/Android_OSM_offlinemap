@@ -21,30 +21,30 @@ Check out the apps on Google Play Store:
 - Clone the project or download a source zip.
 
 - Create a local.properties file at the root of the project. In it, define properties sdk.dir and a osmosis.dir. For example:
-sdk.dir=/Applications/adt-bundle-mac-x86_64-20131030/sdk
-osmosis.dir=/Users/guilhem/Documents/libraries/osmosis
+    sdk.dir=/Applications/adt-bundle-mac-x86_64-20131030/sdk
+    osmosis.dir=/Users/guilhem/Documents/libraries/osmosis
 
 - Create a sign.properties file at the root of the project. It is used to generate a release apk. It must look like this:
-storeFile=../../android_keystore
-storePassword=xxxxxxxx
-keyAlias=android_key
-keyPassword=xxxxxxx
+    storeFile=../../android_keystore
+    storePassword=xxxxxxxx	
+    keyAlias=android_key
+    keyPassword=xxxxxxx
 
 ## Build
 
 - To udpate the cartographic data for a configuration (downloaded from a preconfigured URL), open a terminal and got to the project directory. Do:
 
-	./gradew updateMapData -PmapConfiguration=<config>
+    ./gradew updateMapData -PmapConfiguration=<config>
 
 (where config is one of the subfolders in the "configs" folder, e.g. "tokyo")
 
 - To configure the source for one of the configs, do:
 
-	./gradlew configureAndroidProject -PmapConfiguration=<config>
+    ./gradlew configureAndroidProject -PmapConfiguration=<config>
 
 - To build a release, do:
 
-	./gradlew aR
+    ./gradlew aR
 
 A release apk will be creating in the build/apk folder
 

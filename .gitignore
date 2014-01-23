@@ -14,3 +14,4 @@
 /configs/*/data
 /.gradle
 /assets/*.map
+.DS_Store
