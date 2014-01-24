@@ -10,9 +10,8 @@ public class RamenDB {
 	def static final crawlFile = "crawlRamenDB.json"
 	
 	def static crawl(def dataDir) {
-		def extent = [139.76952688230722,35.67526190370757,139.77484838499277,35.67770218213608]
-		// [139.6165,35.5591,139.9478,35.7836]
-		double gridSize = 0.04
+		def extent = [139.6165,35.5591,139.9478,35.7836] //[139.76952688230722,35.67526190370757,139.77484838499277,35.67770218213608]
+		double gridSize = 0.03
 		def baseUrlForLinks = "http://supleks.jp/stuff/markers?site=ramendb&&count=1000&order=distance"
 		def baseUrlForDetails = "http://supleks.jp/stuff/marker-info?site=ramendb"
 		
@@ -138,7 +137,7 @@ public class RamenDB {
 			def reviews = shopObject.get("reviews").asInt
 			def description = "Score: ${score}\nAverage: ${average} (${reviews} reviews)"
 			mapAnnotation.description = description
-			if(score < 0.5) {
+			if(score < 80) {
 				mapAnnotation.color = Color.YELLOW.RGB
 			} else {
 				mapAnnotation.color = Color.GREEN.RGB
