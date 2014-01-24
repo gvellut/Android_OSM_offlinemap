@@ -279,6 +279,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void init() {
+		hasEditedMapAnnotations = false;
+
 		d(getApplicationContext().getPackageName());
 		String mapName = Utils.MAP_NAME;
 		mapFile = new File(getExternalCacheDir(), mapName);
@@ -294,60 +296,57 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			if (!dataFile.exists() || hasNewVersion(dataFile)) {
 				d("Installing data file");
 				createFileFromAsset(dataFile, datafileName);
-
-				if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_STAR_ONLY)) {
-					// Index existing mapAnnotations
-					Map<String, MapAnnotation> indexPreviousMapAnnotations = new HashMap<String, MapAnnotation>();
-					for (MapAnnotation mapAnnotation : mapAnnotations) {
-						indexPreviousMapAnnotations.put(mapAnnotation.id, mapAnnotation);
-					}
-
-					String dataFileContent = null;
-					InputStream is = null;
-					try {
-						is = new BufferedInputStream(new FileInputStream(
-								dataFile));
-						dataFileContent = Utils.convertStreamToString(is);
-					} catch (IOException e) {
-						e.printStackTrace();
-					} finally {
-						try {
-							is.close();
-						} catch (IOException e) {
-						}
-					}
-
-					if (dataFileContent != null) {
-						ArrayList<MapAnnotation> dataFileMapAnnotations = 
-								deserializeMapAnnotationsFromString(dataFileContent);
-
-						if (!indexPreviousMapAnnotations.isEmpty()) {
-							// We will modify the map annotations below
-							// so need to save later on
-							hasEditedMapAnnotations = true;
-							for(MapAnnotation mapAnnotation : dataFileMapAnnotations) {
-								MapAnnotation previousMapAnnotation = indexPreviousMapAnnotations.get(mapAnnotation.id);
-								if(previousMapAnnotation != null) {
-									// Copy bookmark info
-									mapAnnotation.isBookmarked = previousMapAnnotation.isBookmarked;
-								}
-							}
-							mapAnnotations = dataFileMapAnnotations;
-						}
-					}
-
-				} else {
-					// FIXME Implement merging of the modified notes and
-					// updated note
-				}
+				refreshPreLoadedData();
 			}
 		}
 
 		markerFactory = new MarkerFactory(this);
 
-		hasEditedMapAnnotations = false;
+	}
 
-		restorePreferences();
+	private void refreshPreLoadedData() {
+		if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_STAR_ONLY)) {
+			// Index existing mapAnnotations
+			Map<String, MapAnnotation> indexPreviousMapAnnotations = new HashMap<String, MapAnnotation>();
+			for (MapAnnotation mapAnnotation : mapAnnotations) {
+				indexPreviousMapAnnotations
+						.put(mapAnnotation.id, mapAnnotation);
+			}
+
+			String dataFileContent = null;
+			InputStream is = null;
+			try {
+				is = new BufferedInputStream(new FileInputStream(dataFile));
+				dataFileContent = Utils.convertStreamToString(is);
+			} catch (IOException e) {
+				Utils.e("Error opening OFM", e);
+			} finally {
+				try {
+					is.close();
+				} catch (IOException e) {
+				}
+			}
+
+			if (dataFileContent != null) {
+				ArrayList<MapAnnotation> dataFileMapAnnotations = deserializeMapAnnotationsFromString(dataFileContent);
+
+				// We will modify the map annotations below
+				// so need to save later on
+				hasEditedMapAnnotations = true;
+				for (MapAnnotation mapAnnotation : dataFileMapAnnotations) {
+					MapAnnotation previousMapAnnotation = indexPreviousMapAnnotations
+							.get(mapAnnotation.id);
+					if (previousMapAnnotation != null) {
+						// Copy bookmark info from previous annotations
+						mapAnnotation.isBookmarked = previousMapAnnotation.isBookmarked;
+					}
+				}
+				mapAnnotations = dataFileMapAnnotations;
+			}
+		} else {
+			// FIXME Implement merging of the modified notes and
+			// updated note
+		}
 	}
 
 	@SuppressWarnings("unchecked")

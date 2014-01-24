@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="welcome"><![CDATA[Welcome to %1$s!\n
-        - This map shows all ramen restaurants of central Tokyo.\n
-        - The colors for each restaurant come from the review scores in the Ramen DB website. Green is best.\n
+        - This map shows all the ramen restaurants in central Tokyo.\n
+        - The colors for each restaurant come from the review scores on the Ramen DB website. The green ones are the best.\n
         - For getting the name and the review score for a shop, just tap the point.\n
         - Star a ramen shop by tapping and holding on a point.]]></string>
     <string name="timeout_location">Unable to get location</string>

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="welcome"><![CDATA[Welcome to %1$s!\n
-        - To add a note, just press and hold somewhere on the map. 
-        You can change the title, details and color of the note.\n
-        - Press and hold on an existing note to modify it. 
-        You can star, edit or delete the note.\n
-        - For a quick look at a note, just tap it.]]></string>
+        - This map shows all ramen restaurants of central Tokyo.\n
+        - The colors for each restaurant come from the review scores in the Ramen DB website. Green is best.\n
+        - For getting the name and the review score for a shop, just tap the point.\n
+        - Star a ramen shop by tapping and holding on a point.]]></string>
     <string name="timeout_location">Unable to get location</string>
 </resources>
