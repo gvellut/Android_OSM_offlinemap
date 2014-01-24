@@ -37,6 +37,7 @@ keyPassword=xxxxxxx
 ## Build
 
 - To udpate the cartographic data for a configuration (downloaded from a preconfigured URL), open a terminal and got to the project directory. Do:
+
 ```
 ./gradew updateMapData -PmapConfiguration=<config>
 ```
