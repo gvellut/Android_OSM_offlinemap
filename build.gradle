@@ -68,7 +68,7 @@ if(project.hasProperty("mapConfiguration")) {
 
 
 	task configureAndroidProject {
-		dependsOn "copyMapFile", "copyGenericXml", "copyIcons",
+		dependsOn "copyMapFile", "copyOFMFile", "copyValuesXml", "copyIcons",
 		"updateVersion", "updateAppPackage"
 	}
 
@@ -84,8 +84,23 @@ if(project.hasProperty("mapConfiguration")) {
 			into "assets"
 		}
 	}
+	
+	task copyOFMFile << {
+		file("assets").mkdirs()
+		ant.delete() {
+			fileset(dir: 'assets') {
+				include(name: '*.ofm')
+			}
+		}
+		if(project.hasProperty("data_file_name")) {
+			copy{
+				from "${dataFolder}/${data_file_name}"
+				into "assets"
+			}
+		}
+	}
 
-	task copyGenericXml << {
+	task copyValuesXml << {
 		ant.copy(toDir: "res", overwrite: true) {
 			fileSet(dir:configFolder){
 				include(name:"values*/**")
@@ -161,17 +176,17 @@ if(project.hasProperty("mapConfiguration")) {
 		}
 	}
 
-	if(project.hasProperty("datafetch")) {
+	if(project.hasProperty("data_fetch_class")) {
 		task updatePointData {
 			dependsOn "crawlPointData", "createOFMFromPointData"
 		}
 
 		task crawlPointData << {
-			Class.forName(datafetch, false, Thread.currentThread().contextClassLoader).crawl(file(dataFolder))
+			Class.forName(data_fetch_class, false, Thread.currentThread().contextClassLoader).crawl(file(dataFolder))
 		}
 
 		task createOFMFromPointData << {
-			Class.forName(datafetch, false, Thread.currentThread().contextClassLoader).analyze(file(dataFolder), datafile)
+			Class.forName(data_fetch_class, false, Thread.currentThread().contextClassLoader).analyze(file(dataFolder), data_file_name)
 		}
 
 		createOFMFromPointData.mustRunAfter crawlPointData
