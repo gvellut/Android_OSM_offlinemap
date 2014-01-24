@@ -38,10 +38,15 @@ public class Utils {
 	public static double INITIAL_LON;
 	public static byte INITIAL_ZOOM;
 	public static String OFM_FILE_NAME_FOR_EXPORT;
+	public static String UI_MODE;
+	public static String DATA_NAME;
 
 	public static final int DEFAULT_MARKER_COLOR = Color.CYAN;
 	public static final int DEFAULT_MARKER_SIZE_DP = 24;
 	public static final int LOCATION_UPDATE_TIMEOUT = 10000;
+	
+	public static final String UI_MODE_STAR_ONLY = "starOnly";
+	public static final String UI_MODE_FULL = "full";
 
 	public static final String EXTRA_IS_NEW = "extra_is_new";
 	public static final String EXTRA_TITLE = "extra_title";
@@ -75,6 +80,19 @@ public class Utils {
 		INITIAL_LON = Double.valueOf(context.getString(R.string.initial_lon));
 		INITIAL_ZOOM = (byte) context.getResources().getInteger(R.integer.initial_zoom);
 		OFM_FILE_NAME_FOR_EXPORT = context.getString(R.string.ofm_file_name_for_export);
+		UI_MODE = getSafeStringResourceByName(context, "ui_mode");
+		if(UI_MODE == null) {
+			UI_MODE = UI_MODE_FULL;
+		}
+		DATA_NAME = getSafeStringResourceByName(context, "data_file_name");
+	}
+	
+	public static String getSafeStringResourceByName(Context context, String resourceName) {
+		int resourceId = context.getResources().getIdentifier(resourceName, "string", context.getPackageName());
+		if(resourceId != 0) {
+			return context.getResources().getString(resourceId);
+		}
+		return null;
 	}
 
 	public static Bitmap viewToBitmap(Context c, View view) {

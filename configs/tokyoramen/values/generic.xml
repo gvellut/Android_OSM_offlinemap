@@ -9,5 +9,8 @@
 	<string name="initial_lon">139.74678</string>
 	<integer name="initial_zoom">14</integer>
 	<string name="ofm_file_name_for_export">tokyoramen</string>
+	
+	<string name="ui_mode">star_only</string>
+	<string name="data_file_name">TokyoRamen.ofm</string>
     
 </resources>

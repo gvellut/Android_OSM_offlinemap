@@ -15,10 +15,12 @@ import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
-import org.mapsforge.android.maps.Projection;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
@@ -42,6 +44,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -70,6 +73,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OnConnectionFailedListener, LocationListener {
 
 	private File mapFile;
+	private File dataFile;
 	private LocationClient locationClient;
 	private MapView mapView;
 	private boolean zoomToCurrentPositionOnConnected;
@@ -78,6 +82,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	private MapData mapData;
 	private ArrayList<MapAnnotation> mapAnnotations;
 	private CurrentPosition currentPosition;
+	private boolean hasEditedMapAnnotations;
 
 	private ArrayItemizedOverlay currentPositionOverlay;
 	private ArrayItemizedOverlay mapAnnotationsOverlay;
@@ -136,6 +141,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapData.mapZoom = mapView.getMapPosition().getZoomLevel();
 
 		savePreferences();
+		hasEditedMapAnnotations = false;
 	}
 
 	@Override
@@ -278,10 +284,68 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapFile = new File(getExternalCacheDir(), mapName);
 		if (!mapFile.exists() || hasNewVersion(mapFile)) {
 			d("Installing map");
-			createFileFromInputStream(mapFile, mapName);
+			createFileFromAsset(mapFile, mapName);
+		}
+
+		if (Utils.DATA_NAME != null) {
+			// Data file to preload
+			String datafileName = Utils.DATA_NAME;
+			dataFile = new File(getExternalCacheDir(), datafileName);
+			if (!dataFile.exists() || hasNewVersion(dataFile)) {
+				d("Installing data file");
+				createFileFromAsset(dataFile, datafileName);
+
+				if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_STAR_ONLY)) {
+					// Index existing mapAnnotations
+					Map<String, MapAnnotation> indexPreviousMapAnnotations = new HashMap<String, MapAnnotation>();
+					for (MapAnnotation mapAnnotation : mapAnnotations) {
+						indexPreviousMapAnnotations.put(mapAnnotation.id, mapAnnotation);
+					}
+
+					String dataFileContent = null;
+					InputStream is = null;
+					try {
+						is = new BufferedInputStream(new FileInputStream(
+								dataFile));
+						dataFileContent = Utils.convertStreamToString(is);
+					} catch (IOException e) {
+						e.printStackTrace();
+					} finally {
+						try {
+							is.close();
+						} catch (IOException e) {
+						}
+					}
+
+					if (dataFileContent != null) {
+						ArrayList<MapAnnotation> dataFileMapAnnotations = 
+								deserializeMapAnnotationsFromString(dataFileContent);
+
+						if (!indexPreviousMapAnnotations.isEmpty()) {
+							// We will modify the map annotations below
+							// so need to save later on
+							hasEditedMapAnnotations = true;
+							for(MapAnnotation mapAnnotation : dataFileMapAnnotations) {
+								MapAnnotation previousMapAnnotation = indexPreviousMapAnnotations.get(mapAnnotation.id);
+								if(previousMapAnnotation != null) {
+									// Copy bookmark info
+									mapAnnotation.isBookmarked = previousMapAnnotation.isBookmarked;
+								}
+							}
+							mapAnnotations = dataFileMapAnnotations;
+						}
+					}
+
+				} else {
+					// FIXME Implement merging of the modified notes and
+					// updated note
+				}
+			}
 		}
 
 		markerFactory = new MarkerFactory(this);
+
+		hasEditedMapAnnotations = false;
 
 		restorePreferences();
 	}
@@ -305,31 +369,25 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		String sSavedLocations = settings.getString(Utils.PREF_SAVED_LOCATIONS,
 				null);
-		if (sMapData != null) {
-			try {
-				Type type = new TypeToken<ArrayList<MapAnnotation>>() {
-				}.getType();
-				mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
-						sSavedLocations, type);
-			} catch (Exception ex) {
-				Log.e(Utils.TAG, "Error getting saved SavedLocations", ex);
-			}
+		if (sSavedLocations != null) {
+			mapAnnotations = deserializeMapAnnotationsFromString(sSavedLocations);
 		} else {
 			mapAnnotations = new ArrayList<MapAnnotation>();
 		}
 
-		String sCurrentPosition = settings.getString(Utils.PREF_CURRENT_POSITION, null);
+		String sCurrentPosition = settings.getString(
+				Utils.PREF_CURRENT_POSITION, null);
 		if (sCurrentPosition != null) {
 			try {
-				currentPosition = (CurrentPosition) deserializeFromString(sCurrentPosition,
-						CurrentPosition.class);
+				currentPosition = (CurrentPosition) deserializeFromString(
+						sCurrentPosition, CurrentPosition.class);
 			} catch (Exception ex) {
-				Log.e(Utils.TAG, "Error getting saved MapData", ex);
+				Log.e(Utils.TAG, "Error getting saved CurrentPosition", ex);
 			}
 		} else {
 			currentPosition = null;
 		}
-		
+
 		isFirstTimeRun = settings
 				.getBoolean(Utils.PREF_IS_FIRST_TIME_RUN, true);
 	}
@@ -342,10 +400,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		editor.putString(Utils.PREF_MAP_DATA,
 				serializeToString(mapData, MapData.class));
 
-		Type type = new TypeToken<ArrayList<MapAnnotation>>() {
-		}.getType();
-		editor.putString(Utils.PREF_SAVED_LOCATIONS,
-				serializeToString(mapAnnotations, type));
+		if (hasEditedMapAnnotations) {
+			Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+			}.getType();
+			editor.putString(Utils.PREF_SAVED_LOCATIONS,
+					serializeToString(mapAnnotations, type));
+		}
 
 		editor.putString(Utils.PREF_CURRENT_POSITION,
 				serializeToString(currentPosition, CurrentPosition.class));
@@ -365,6 +425,22 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		GsonBuilder builder = new GsonBuilder();
 		Gson gson = builder.create();
 		return gson.fromJson(json, type);
+	}
+
+	@SuppressWarnings("unchecked")
+	private ArrayList<MapAnnotation> deserializeMapAnnotationsFromString(
+			String json) {
+		ArrayList<MapAnnotation> deserMapAnnotations = null;
+		try {
+			Type type = new TypeToken<ArrayList<MapAnnotation>>() {
+			}.getType();
+			deserMapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
+					json, type);
+		} catch (Exception ex) {
+			Log.e(Utils.TAG, "Error deserializing Map Annotations", ex);
+			deserMapAnnotations = new ArrayList<MapAnnotation>();
+		}
+		return deserMapAnnotations;
 	}
 
 	private void createMapView() {
@@ -415,8 +491,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
 		}
-		
-		if(currentPosition != null) {
+
+		if (currentPosition != null) {
 			addCurrentPositionMarker();
 		}
 	}
@@ -432,7 +508,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 			@Override
 			protected boolean onLongPress(int index) {
-				MainActivity.this.showContextMenuForMapAnnotation(index);
+				if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_FULL)) {
+					MainActivity.this.showContextMenuForMapAnnotation(index);
+				} else {
+					initializeContextForIndex(index);
+					starMapAnnotation();
+				}
 				return true;
 			}
 
@@ -495,6 +576,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 							.getMarker(mapAnnotationInContext));
 					mapAnnotationsOverlay.requestRedraw();
 				}
+				hasEditedMapAnnotations = true;
 				updateBubbleForMapAnnotation(mapAnnotationInContext);
 			} else {
 				if (isCreation) {
@@ -570,6 +652,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 					mapAnnotations = (ArrayList<MapAnnotation>) deserializeFromString(
 							sSavedLocations, type);
+					hasEditedMapAnnotations = true;
 
 					clearBubble();
 					mapAnnotationsOverlay.clear();
@@ -677,9 +760,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showContextMenuForMapAnnotation(int index) {
-		indexMapAnnotationInContext = index;
-		mapAnnotationInContext = mapAnnotations.get(index);
-		overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, index);
+		initializeContextForIndex(index);
 
 		runOnUiThread(new Runnable() {
 			public void run() {
@@ -708,6 +789,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			mapAnnotations.remove(mapAnnotationInContext);
 			mapAnnotationsOverlay.removeItem(overlayItemInContext);
 
+			hasEditedMapAnnotations = true;
+
 			cleanUpContextInformation();
 		}
 	}
@@ -719,7 +802,15 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				.getMarker(mapAnnotationInContext));
 		mapAnnotationsOverlay.requestRedraw();
 
+		hasEditedMapAnnotations = true;
+
 		cleanUpContextInformation();
+	}
+
+	private void initializeContextForIndex(int index) {
+		indexMapAnnotationInContext = index;
+		mapAnnotationInContext = mapAnnotations.get(index);
+		overlayItemInContext = Utils.getItem(mapAnnotationsOverlay, index);
 	}
 
 	private void cleanUpContextInformation() {
@@ -777,7 +868,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		}
 	}
 
-	private File createFileFromInputStream(File f, String mapName) {
+	private File createFileFromAsset(File f, String mapName) {
 		try {
 			AssetManager am = getAssets();
 			InputStream inputStream = am.open(mapName);
@@ -906,7 +997,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void setCurrentPosition(Location location) {
 		currentPosition = new CurrentPosition();
-		
+
 		currentPosition.latitude = location.getLatitude();
 		currentPosition.longitude = location.getLongitude();
 
@@ -919,9 +1010,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		showCurrentPosition();
 		addCurrentPositionMarker();
 	}
-	
+
 	private void showCurrentPosition() {
-		GeoPoint position = new GeoPoint(currentPosition.latitude, 
+		GeoPoint position = new GeoPoint(currentPosition.latitude,
 				currentPosition.longitude);
 		byte zoom = mapView.getMapPosition().getZoomLevel();
 		if (zoom < 17) {
@@ -931,19 +1022,17 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getController().setCenter(position);
 		mapView.getController().setZoom(zoom);
 	}
-	
-	
+
 	private void addCurrentPositionMarker() {
-		GeoPoint position = new GeoPoint(currentPosition.latitude, 
+		GeoPoint position = new GeoPoint(currentPosition.latitude,
 				currentPosition.longitude);
-		
+
 		currentPositionWithAccuracyMarker.setAccuracy(currentPosition.accuracy);
-		
+
 		currentPositionOverlay.clear();
 		OverlayItem overlay = new OverlayItem();
 		overlay.setPoint(position);
 		currentPositionOverlay.addItem(overlay);
 	}
-	
 
 }

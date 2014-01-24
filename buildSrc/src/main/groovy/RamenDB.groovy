@@ -2,6 +2,7 @@ import com.google.gson.*
 import com.google.gson.stream.JsonReader
 
 import java.net.URLDecoder
+import java.awt.Color
 
 import org.gradle.api.*
 
@@ -128,6 +129,7 @@ public class RamenDB {
 		for(def entry in entries ) {
 			def shopObject = entry.getValue().getAsJsonObject()
 			MapAnnotation mapAnnotation = new MapAnnotation();
+			mapAnnotation.id = shopObject.get("id").asString
 			mapAnnotation.latitude = shopObject.get("lat").asDouble
 			mapAnnotation.longitude = shopObject.get("lon").asDouble
 			mapAnnotation.title = shopObject.get("name").asString
@@ -136,7 +138,11 @@ public class RamenDB {
 			def reviews = shopObject.get("reviews").asInt
 			def description = "Score: ${score}\nAverage: ${average} (${reviews} reviews)"
 			mapAnnotation.description = description
-			mapAnnotation.color = java.awt.Color.YELLOW.RGB
+			if(score < 0.5) {
+				mapAnnotation.color = Color.YELLOW.RGB
+			} else {
+				mapAnnotation.color = Color.GREEN.RGB
+			}
 			mapAnnotation.isBookmarked = false
 			mapAnnotations.add(mapAnnotation);
 		}
@@ -147,6 +153,7 @@ public class RamenDB {
 }
 
 class MapAnnotation {
+	public String id;
 	public double latitude, longitude
 	public String title, description
 	public int color
