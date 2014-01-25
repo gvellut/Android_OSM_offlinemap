@@ -6,5 +6,4 @@
         - Press and hold on an existing note to modify it. 
         You can star, edit or delete the note.\n
         - For a quick look at a note, just tap it.]]></string>
-    <string name="timeout_location">Unable to get location</string>
 </resources>

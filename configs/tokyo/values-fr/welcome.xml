@@ -6,5 +6,5 @@
         - Appuyez et maintenez le doigt sur un point existant pour le changer. 
         Vous pouvez le modifer, lui donner un icône spécial ou l\'effacer.\n
         - Pour visualiser rapidement le contenu d\'un point, appuyer simplement dessus.]]></string>
-    <string name="timeout_location">Impossible de se localiser via GPS</string>
+        
 </resources>

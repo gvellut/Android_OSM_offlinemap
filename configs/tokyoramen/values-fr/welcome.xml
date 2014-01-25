@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    
     <string name="welcome"><![CDATA[Bienvenue sur %1$s !\n\n
         - Cette carte affiche tous les restaurants de ramen du centre de Tokyo.
         - Les couleurs pour chaque restaurant sont déterminés à partir du score du restaurant sur le site Ramen DB.
