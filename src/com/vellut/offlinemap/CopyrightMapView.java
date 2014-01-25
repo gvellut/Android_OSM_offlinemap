@@ -2,14 +2,14 @@ package com.vellut.offlinemap;
 
 import org.mapsforge.android.maps.MapView;
 
-import com.vellut.offlinemap.tokyo.R;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.util.TypedValue;
+
+import com.vellut.offlinemap.tokyo.R;
 
 public class CopyrightMapView extends MapView {
 

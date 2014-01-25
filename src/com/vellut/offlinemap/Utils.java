@@ -32,19 +32,24 @@ import java.util.List;
 
 public class Utils {
 	public static final String TAG = "OFM";
-	
+
 	public static String MAP_NAME;
 	public static double INITIAL_LAT;
 	public static double INITIAL_LON;
 	public static byte INITIAL_ZOOM;
 	public static String OFM_FILE_NAME_FOR_EXPORT;
+	public static boolean START_CURRENT_POSITION;
 	public static String UI_MODE;
 	public static String DATA_NAME;
+	public static String DESCRIPTION_TEMPLATE;
+	public static byte ZOOM_LEVEL_CURRENT_POSITION;
+	public static byte ZOOM_LEVEL_SHOW_DATA_POINTS;
+	public static boolean HAS_PRELOADED_DATA;
 
 	public static final int DEFAULT_MARKER_COLOR = Color.CYAN;
 	public static final int DEFAULT_MARKER_SIZE_DP = 24;
 	public static final int LOCATION_UPDATE_TIMEOUT = 10000;
-	
+
 	public static final String UI_MODE_STAR_ONLY = "star_only";
 	public static final String UI_MODE_FULL = "full";
 
@@ -71,28 +76,68 @@ public class Utils {
 	public static final int CODE_EXPORT_FILE_EXPLORER_REQUEST = 153;
 
 	public static final String OFM_FILE_EXTENSION = "ofm";
-	public static final Integer[] MAP_ANNOTATION_COLORS = { Color.BLUE, Color.RED,
-			Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA };
-	
+	public static final Integer[] MAP_ANNOTATION_COLORS = { Color.BLUE,
+			Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA };
+
 	public static void fillGenericData(Context context) {
+		// mandatory parameters
 		MAP_NAME = context.getString(R.string.map_file_name);
 		INITIAL_LAT = Double.valueOf(context.getString(R.string.initial_lat));
 		INITIAL_LON = Double.valueOf(context.getString(R.string.initial_lon));
-		INITIAL_ZOOM = (byte) context.getResources().getInteger(R.integer.initial_zoom);
-		OFM_FILE_NAME_FOR_EXPORT = context.getString(R.string.ofm_file_name_for_export);
-		UI_MODE = getSafeStringResourceByName(context, "ui_mode");
-		if(UI_MODE == null) {
-			UI_MODE = UI_MODE_FULL;
+		INITIAL_ZOOM = (byte) context.getResources().getInteger(
+				R.integer.initial_zoom);
+		OFM_FILE_NAME_FOR_EXPORT = context
+				.getString(R.string.ofm_file_name_for_export);
+
+		// Optional parameters
+		START_CURRENT_POSITION = getSafeBooleanResourceByName(context,
+				"start_current_position", false);
+		ZOOM_LEVEL_CURRENT_POSITION = getSafeByteResourceByName(context,
+				"zoom_current_position", (byte) 17);
+		UI_MODE = getSafeStringResourceByName(context, "ui_mode", UI_MODE_FULL);
+
+		// only matters in data file mode
+		DATA_NAME = getSafeStringResourceByName(context, "data_file_name", null);
+		if(DATA_NAME != null) {
+			HAS_PRELOADED_DATA = true;
+		} else {
+			HAS_PRELOADED_DATA = false;
+			// annotations will be saved there
+			DATA_NAME = "mapAnnotation";
 		}
-		DATA_NAME = getSafeStringResourceByName(context, "data_file_name");
+		ZOOM_LEVEL_SHOW_DATA_POINTS = getSafeByteResourceByName(context,
+				"zoom_show_data_points", (byte) 0);
+		DESCRIPTION_TEMPLATE = getSafeStringResourceByName(context, "description_template", null);
 	}
-	
-	public static String getSafeStringResourceByName(Context context, String resourceName) {
-		int resourceId = context.getResources().getIdentifier(resourceName, "string", context.getPackageName());
-		if(resourceId != 0) {
+
+	public static String getSafeStringResourceByName(Context context,
+			String resourceName, String defaultValue) {
+		int resourceId = context.getResources().getIdentifier(resourceName,
+				"string", context.getPackageName());
+		if (resourceId != 0) {
 			return context.getResources().getString(resourceId);
 		}
-		return null;
+		return defaultValue;
+	}
+
+	public static boolean getSafeBooleanResourceByName(Context context,
+			String resourceName, boolean defaultValue) {
+		int resourceId = context.getResources().getIdentifier(resourceName,
+				"bool", context.getPackageName());
+		if (resourceId != 0) {
+			return context.getResources().getBoolean(resourceId);
+		}
+		return defaultValue;
+	}
+
+	public static byte getSafeByteResourceByName(Context context,
+			String resourceName, byte defaultValue) {
+		int resourceId = context.getResources().getIdentifier(resourceName,
+				"integer", context.getPackageName());
+		if (resourceId != 0) {
+			return (byte) context.getResources().getInteger(resourceId);
+		}
+		return defaultValue;
 	}
 
 	public static Bitmap viewToBitmap(Context c, View view) {
@@ -153,11 +198,32 @@ public class Utils {
 
 		return null;
 	}
+	
+	public static List<OverlayItem> getItems(ArrayItemizedOverlay overlays) {
+		try {
+			Field itemsField = ArrayItemizedOverlay.class
+					.getDeclaredField("overlayItems");
+			itemsField.setAccessible(true);
+			List<OverlayItem> items = (List<OverlayItem>) itemsField
+					.get(overlays);
+			return items;
+		} catch (NoSuchFieldException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+	
+	
 
 	public static String getExtension(String fileName) {
 		int i = fileName.lastIndexOf('.');
 		if (i > 0) {
-			return fileName.substring(i+1);
+			return fileName.substring(i + 1);
 		}
 
 		return "";
@@ -171,8 +237,8 @@ public class Utils {
 
 			char[] buffer = new char[1024];
 			try {
-				Reader reader = new BufferedReader(
-						new InputStreamReader(is, "UTF-8"));
+				Reader reader = new BufferedReader(new InputStreamReader(is,
+						"UTF-8"));
 				int n;
 				while ((n = reader.read(buffer)) != -1) {
 					writer.write(buffer, 0, n);
@@ -186,14 +252,16 @@ public class Utils {
 		}
 	}
 
-	public static String pathRelativeTo(String filePath, String relativeToFolderPath) {
-		if(relativeToFolderPath.endsWith("/")) {
-			relativeToFolderPath = relativeToFolderPath.substring(0, relativeToFolderPath.length() - 1);
+	public static String pathRelativeTo(String filePath,
+			String relativeToFolderPath) {
+		if (relativeToFolderPath.endsWith("/")) {
+			relativeToFolderPath = relativeToFolderPath.substring(0,
+					relativeToFolderPath.length() - 1);
 		}
 
-		if(filePath.startsWith(relativeToFolderPath)) {
+		if (filePath.startsWith(relativeToFolderPath)) {
 			String path = filePath.substring(relativeToFolderPath.length());
-			if(path.startsWith("/")) {
+			if (path.startsWith("/")) {
 				path = path.substring(1);
 			}
 			return path;
@@ -210,15 +278,13 @@ public class Utils {
 		textView.setTextColor(Color.WHITE);
 		toast.show();
 	}
-	
+
 	public static void d(String text) {
 		Log.d(TAG, text);
 	}
 
-
 	public static void e(String text, Throwable t) {
 		Log.e(TAG, text, t);
 	}
-	
 
 }

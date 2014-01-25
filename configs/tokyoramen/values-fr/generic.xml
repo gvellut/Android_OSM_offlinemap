@@ -2,5 +2,7 @@
 <resources>
 
     <string name="app_name">Tokyo Ramen Map</string>
+    
+	<string name="description_template">Score: %1$s\Moyenne: %2$s [%3$s avis]</string>
 
 </resources>

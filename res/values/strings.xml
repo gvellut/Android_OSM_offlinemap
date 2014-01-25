@@ -12,6 +12,7 @@
     <string name="action_star_map_annotation">Star</string>
     <string name="action_unstar_map_annotation">Unstar</string>
     <string name="action_delete_map_annotation">Delete</string>
+    <string name="action_help">Help</string>
     
     <string name="confirm_delete_map_annotation">The note will be deleted. Continue?</string>
     

@@ -21,6 +21,7 @@
     <string name="map_annotation_edit">Mise à jour</string>
     <string name="map_annotation_title_hint">Titre</string>
     <string name="map_annotation_description_hint">Détails</string>
+    <string name="action_help">Aide</string>
     
     <string name="error_empty_title">Le titre ne doit pas être vide</string>
     

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome"><![CDATA[Welcome to %1$s!\n
+    <string name="welcome"><![CDATA[Welcome to %1$s!\n\n
         - To add a note, just press and hold somewhere on the map. 
         You can change the title, details and color of the note.\n
         - Press and hold on an existing note to modify it. 

@@ -16,12 +16,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 
 import org.mapsforge.android.maps.MapActivity;
 import org.mapsforge.android.maps.MapView;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
+import org.mapsforge.android.maps.overlay.ItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 import org.mapsforge.core.GeoPoint;
 
@@ -51,6 +52,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -70,12 +72,12 @@ import com.google.gson.reflect.TypeToken;
 import com.vellut.offlinemap.tokyo.R;
 
 public class MainActivity extends MapActivity implements ConnectionCallbacks,
-		OnConnectionFailedListener, LocationListener {
+		OnConnectionFailedListener, LocationListener, View.OnTouchListener {
 
 	private File mapFile;
 	private File dataFile;
 	private LocationClient locationClient;
-	private MapView mapView;
+	private CopyrightMapView mapView;
 	private boolean zoomToCurrentPositionOnConnected;
 	private MarkerFactory markerFactory;
 
@@ -113,11 +115,16 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		Utils.fillGenericData(this);
 
 		locationClient = new LocationClient(this, this, this);
+		d("BeforeRESTORE");
 		restorePreferences();
+		d("AfterRESTORE");
 		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 
 		init();
-		configureUI();
+
+		d("BeforeCONFIGURE");
+		configureUI(savedInstanceState != null);
+		d("AfterCONFIGURE");
 		if (savedInstanceState != null) {
 			restoreState(savedInstanceState);
 		}
@@ -172,6 +179,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		case R.id.action_export_import:
 			showExportImportDialog();
 			return true;
+		case R.id.action_help:
+			showWelcomeDialog();
+			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}
@@ -213,7 +223,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	private void zoomToCurrentPosition() {
 		// do not launch if location currently updating
-		if (isGooglePlayServicesConnected() && !isLocationUpdating) {
+		if (isGooglePlayServicesConnected() && locationClient.isConnected()
+				&& !isLocationUpdating) {
 			setProgressBarIndeterminateVisibility(true);
 
 			LocationRequest lr = new LocationRequest();
@@ -256,6 +267,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.getController().setCenter(
 				new GeoPoint(Utils.INITIAL_LAT, Utils.INITIAL_LON));
 		mapView.getController().setZoom(Utils.INITIAL_ZOOM);
+
+		checkCurrentZoomForMapAnnotationVisibility();
 	}
 
 	private void showExportImportDialog() {
@@ -289,14 +302,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			createFileFromAsset(mapFile, mapName);
 		}
 
-		if (Utils.DATA_NAME != null) {
+		if (Utils.HAS_PRELOADED_DATA) {
 			// Data file to preload
-			String datafileName = Utils.DATA_NAME;
-			dataFile = new File(getExternalCacheDir(), datafileName);
+			dataFile = new File(getExternalCacheDir(), Utils.DATA_NAME);
 			if (!dataFile.exists() || hasNewVersion(dataFile)) {
 				d("Installing data file");
-				createFileFromAsset(dataFile, datafileName);
-				refreshPreLoadedData();
+				refreshPreLoadedData(Utils.DATA_NAME);
 			}
 		}
 
@@ -304,10 +315,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 	}
 
-	private void refreshPreLoadedData() {
+	private void refreshPreLoadedData(String assetDataFileName) {
 		if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_STAR_ONLY)) {
 			// Index existing mapAnnotations
-			Map<String, MapAnnotation> indexPreviousMapAnnotations = new HashMap<String, MapAnnotation>();
+			Map<String, MapAnnotation> indexPreviousMapAnnotations = new HashMap<String, MapAnnotation>(mapAnnotations.size());
+			// At this point mapAnnotations have already been loaded from 
+			// the saved file
 			for (MapAnnotation mapAnnotation : mapAnnotations) {
 				indexPreviousMapAnnotations
 						.put(mapAnnotation.id, mapAnnotation);
@@ -316,7 +329,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			String dataFileContent = null;
 			InputStream is = null;
 			try {
-				is = new BufferedInputStream(new FileInputStream(dataFile));
+				AssetManager am = getAssets();
+				is = new BufferedInputStream(am.open(assetDataFileName));
 				dataFileContent = Utils.convertStreamToString(is);
 			} catch (IOException e) {
 				Utils.e("Error opening OFM", e);
@@ -329,7 +343,7 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 			if (dataFileContent != null) {
 				ArrayList<MapAnnotation> dataFileMapAnnotations = deserializeMapAnnotationsFromString(dataFileContent);
-
+				
 				// We will modify the map annotations below
 				// so need to save later on
 				hasEditedMapAnnotations = true;
@@ -354,6 +368,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		SharedPreferences settings = PreferenceManager
 				.getDefaultSharedPreferences(this);
 
+		d("BeforeMAPDATA ");
+
 		String sMapData = settings.getString(Utils.PREF_MAP_DATA, null);
 		if (sMapData != null) {
 			try {
@@ -366,10 +382,42 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 			mapData = new MapData();
 		}
 
-		String sSavedLocations = settings.getString(Utils.PREF_SAVED_LOCATIONS,
-				null);
-		if (sSavedLocations != null) {
-			mapAnnotations = deserializeMapAnnotationsFromString(sSavedLocations);
+		d("BeforeSAVLOCATIONS");
+
+		/*
+		 * String sSavedLocations =
+		 * settings.getString(Utils.PREF_SAVED_LOCATIONS, null); if
+		 * (sSavedLocations != null) { long nano = System.nanoTime();
+		 * mapAnnotations =
+		 * deserializeMapAnnotationsFromString(sSavedLocations); long diff =
+		 * System.nanoTime() - nano; d("DESERMAPANNOT1 " + (diff * 1e-9)); }
+		 * else { mapAnnotations = new ArrayList<MapAnnotation>(); }
+		 */
+
+		if (Utils.DATA_NAME != null) {
+			dataFile = new File(getExternalCacheDir(), Utils.DATA_NAME);
+		} else {
+			dataFile = new File(getExternalCacheDir(), "mapAnnotations");
+		}
+
+		if (dataFile.exists()) {
+			String dataFileContent = null;
+			InputStream is = null;
+			try {
+				is = new BufferedInputStream(new FileInputStream(dataFile));
+				dataFileContent = Utils.convertStreamToString(is);
+			} catch (IOException e) {
+				Utils.e("Error opening OFM", e);
+			} finally {
+				try {
+					is.close();
+				} catch (IOException e) {
+				}
+			}
+
+			if (dataFileContent != null) {
+				mapAnnotations = deserializeMapAnnotationsFromString(dataFileContent);
+			}
 		} else {
 			mapAnnotations = new ArrayList<MapAnnotation>();
 		}
@@ -400,10 +448,27 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				serializeToString(mapData, MapData.class));
 
 		if (hasEditedMapAnnotations) {
+			// Save data inside a file in cache directory
+			long nano = System.nanoTime();
 			Type type = new TypeToken<ArrayList<MapAnnotation>>() {
 			}.getType();
-			editor.putString(Utils.PREF_SAVED_LOCATIONS,
-					serializeToString(mapAnnotations, type));
+
+			dataFile = new File(getExternalCacheDir(), Utils.DATA_NAME);
+			OutputStream os = null;
+			try {
+				os = new BufferedOutputStream(new FileOutputStream(dataFile));
+				os.write(serializeToString(mapAnnotations, type).getBytes("UTF-8"));
+			} catch (IOException e) {
+				Utils.e("Error opening OFM", e);
+			} finally {
+				try {
+					os.close();
+				} catch (IOException e) {
+				}
+			}
+			
+			long diff = System.nanoTime() - nano;
+			d("SERIALIZE_MAPANNOT " + (diff * 1e-9));
 		}
 
 		editor.putString(Utils.PREF_CURRENT_POSITION,
@@ -448,31 +513,15 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		mapView.setBuiltInZoomControls(false);
 		mapView.setMapFile(mapFile);
 		setContentView(mapView);
+
+		if (Utils.ZOOM_LEVEL_SHOW_DATA_POINTS > 0) {
+			mapView.setOnTouchListener(this);
+		}
 	}
 
-	private void configureUI() {
+	private void configureUI(boolean isSavedState) {
 		createMapView();
 		registerForContextMenu(mapView);
-
-		if (isFirstTimeRun) {
-			isFirstTimeRun = false;
-
-			showWelcomeDialog();
-
-			// Zoom on Tokyo
-			zoomToInitialPosition();
-		} else {
-			if (mapData.mapZoom == 0) {
-				// just in case...
-				zoomToInitialPosition();
-			} else {
-				// mapData is valid: Zoom on previous position
-				GeoPoint center = new GeoPoint(mapData.mapLatitude,
-						mapData.mapLongitude);
-				mapView.getController().setCenter(center);
-				mapView.getController().setZoom(mapData.mapZoom);
-			}
-		}
 
 		Drawable circle = markerFactory
 				.getNormalMarker(Utils.DEFAULT_MARKER_COLOR);
@@ -487,13 +536,54 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				currentPositionWithAccuracyMarker, false);
 		mapView.getOverlays().add(currentPositionOverlay);
 
+		bubbleTextOverlay = new ArrayItemizedOverlay(null, false);
+		mapView.getOverlays().add(bubbleTextOverlay);
+
+		if (isFirstTimeRun) {
+			isFirstTimeRun = false;
+
+			showWelcomeDialog();
+
+			// Zoom on Tokyo
+			zoomToInitialPosition();
+			if (Utils.START_CURRENT_POSITION) {
+				// async
+				zoomToCurrentPosition();
+			}
+		} else {
+			if (mapData.mapZoom == 0) {
+				// just in case...
+				zoomToInitialPosition();
+			} else {
+				// mapData is valid: Zoom on previous position
+				GeoPoint center = new GeoPoint(mapData.mapLatitude,
+						mapData.mapLongitude);
+				mapView.getController().setCenter(center);
+				mapView.getController().setZoom(mapData.mapZoom);
+			}
+
+			if (Utils.START_CURRENT_POSITION && !isSavedState) {
+				// async
+				zoomToCurrentPosition();
+			}
+		}
+
+		long nano = System.nanoTime();
+
 		for (MapAnnotation mapAnnotation : mapAnnotations) {
 			addMarker(mapAnnotation);
 		}
 
-		if (currentPosition != null) {
+		long diff = System.nanoTime() - nano;
+		d("DESERMAPANNOT " + (diff * 1e-9));
+
+		if (isSavedState && currentPosition != null) {
 			addCurrentPositionMarker();
+		} else {
+			currentPosition = null;
 		}
+
+		checkCurrentZoomForMapAnnotationVisibility();
 	}
 
 	private ArrayItemizedOverlay createMapAnnotationsOverlay(
@@ -528,7 +618,9 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				boolean hasHit = checkItemHit(geoPoint, mapView,
 						EventType.LONG_PRESS);
 				if (!hasHit) {
-					addMapAnnotationInteractive(geoPoint);
+					if (TextUtils.equals(Utils.UI_MODE, Utils.UI_MODE_FULL)) {
+						addMapAnnotationInteractive(geoPoint);
+					}
 				}
 				// Note: No other layer can handle double tap
 				return true;
@@ -680,6 +772,37 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		super.onActivityResult(requestCode, resultCode, data);
 	}
 
+	public void checkCurrentZoomForMapAnnotationVisibility() {
+		final byte currentZoomLevel = mapView.getMapPosition().getZoomLevel();
+
+		if (currentZoomLevel < Utils.ZOOM_LEVEL_SHOW_DATA_POINTS) {
+			mapView.getOverlays().remove(bubbleTextOverlay);
+			mapView.getOverlays().remove(mapAnnotationsOverlay);
+		} else {
+			if (!mapView.getOverlays().contains(mapAnnotationsOverlay)) {
+				// Mapsforge has issue with reading a previously removed
+				// overlay: so copy, replace, add
+				Drawable circle = markerFactory
+						.getNormalMarker(Utils.DEFAULT_MARKER_COLOR);
+				ArrayItemizedOverlay newMapAnnotationsOverlay = createMapAnnotationsOverlay(
+						circle, false);
+				newMapAnnotationsOverlay.addItems(Utils
+						.getItems(mapAnnotationsOverlay));
+				mapAnnotationsOverlay = newMapAnnotationsOverlay;
+				mapView.getOverlays().add(mapAnnotationsOverlay);
+			}
+
+			if (!mapView.getOverlays().contains(bubbleTextOverlay)) {
+				ArrayItemizedOverlay newBubbleTextOverlay = new ArrayItemizedOverlay(
+						null);
+				newBubbleTextOverlay
+						.addItems(Utils.getItems(bubbleTextOverlay));
+				bubbleTextOverlay = newBubbleTextOverlay;
+				mapView.getOverlays().add(bubbleTextOverlay);
+			}
+		}
+	}
+
 	private void startExportMapAnnotationsToFile() {
 		Intent intent = new Intent();
 		intent.setClass(this, FileExplorerActivity.class);
@@ -707,7 +830,12 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void showBubbleForMapAnnotationInteractive(int index) {
+
 		MapAnnotation mapAnnotation = mapAnnotations.get(index);
+
+		d("Index " + index + " currentMA4B " + currentMapAnnotationForBubble
+				+ " MA " + mapAnnotation);
+
 		if (currentMapAnnotationForBubble == mapAnnotation) {
 			// toggle
 			clearBubble();
@@ -734,22 +862,27 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 				|| mapAnnotation.description.isEmpty()) {
 			((ViewGroup) bubbleView).removeView(textViewDescription);
 		} else {
-			textViewDescription.setText(mapAnnotation.description);
+			String text = mapAnnotation.description;
+			if (Utils.DESCRIPTION_TEMPLATE != null) {
+				// apply template
+				Object[] args = (Object[]) deserializeFromString(text,
+						String[].class);
+				text = String.format(Locale.US, Utils.DESCRIPTION_TEMPLATE,
+						args);
+			}
+			textViewDescription.setText(text);
 		}
 		Bitmap bitmap = Utils.viewToBitmap(this, bubbleView);
-		BitmapDrawable bd = new BitmapDrawable(getResources(), bitmap);
+		Drawable bd = new BitmapDrawable(getResources(), bitmap);
+		bd = ItemizedOverlay.boundCenterBottom(bd);
 
 		GeoPoint gp = new GeoPoint(mapAnnotation.latitude,
 				mapAnnotation.longitude);
 
-		if (bubbleTextOverlay != null) {
-			mapView.getOverlays().remove(bubbleTextOverlay);
-		}
-		bubbleTextOverlay = new ArrayItemizedOverlay(bd);
-		OverlayItem bubble = new OverlayItem();
-		bubble.setPoint(gp);
+		bubbleTextOverlay.clear();
+		OverlayItem bubble = new OverlayItem(gp, "", "", bd);
 		bubbleTextOverlay.addItem(bubble);
-		mapView.getOverlays().add(bubbleTextOverlay);
+		bubbleTextOverlay.requestRedraw();
 	}
 
 	private void updateBubbleForMapAnnotation(MapAnnotation mapAnnotation) {
@@ -861,10 +994,8 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 	}
 
 	private void clearBubble() {
-		if (bubbleTextOverlay != null) {
-			mapView.getOverlays().remove(bubbleTextOverlay);
-			currentMapAnnotationForBubble = null;
-		}
+		bubbleTextOverlay.clear();
+		currentMapAnnotationForBubble = null;
 	}
 
 	private File createFileFromAsset(File f, String mapName) {
@@ -1008,14 +1139,16 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 
 		showCurrentPosition();
 		addCurrentPositionMarker();
+
+		checkCurrentZoomForMapAnnotationVisibility();
 	}
 
 	private void showCurrentPosition() {
 		GeoPoint position = new GeoPoint(currentPosition.latitude,
 				currentPosition.longitude);
 		byte zoom = mapView.getMapPosition().getZoomLevel();
-		if (zoom < 17) {
-			zoom = 17;
+		if (zoom < Utils.ZOOM_LEVEL_CURRENT_POSITION) {
+			zoom = Utils.ZOOM_LEVEL_CURRENT_POSITION;
 		}
 
 		mapView.getController().setCenter(position);
@@ -1032,6 +1165,14 @@ public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OverlayItem overlay = new OverlayItem();
 		overlay.setPoint(position);
 		currentPositionOverlay.addItem(overlay);
+	}
+
+	@Override
+	public boolean onTouch(View v, MotionEvent event) {
+		if (v == mapView) {
+			checkCurrentZoomForMapAnnotationVisibility();
+		}
+		return false;
 	}
 
 }

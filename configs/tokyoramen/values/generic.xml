@@ -7,10 +7,15 @@
 	<string name="map_file_name">Tokyo.map</string>
 	<string name="initial_lat">35.682817</string>
 	<string name="initial_lon">139.74678</string>
-	<integer name="initial_zoom">14</integer>
+	<integer name="initial_zoom">15</integer>
 	<string name="ofm_file_name_for_export">tokyoramen</string>
 	
+	<bool name="start_current_position">false</bool>
+	<integer name="zoom_current_position">17</integer>
+	
+	<integer name="zoom_show_data_points">15</integer>
 	<string name="ui_mode">star_only</string>
 	<string name="data_file_name">TokyoRamen.ofm</string>
+	<string name="description_template">Score: %1$s\nAverage: %2$s [%3$s review(s)]</string>
     
 </resources>
