@@ -9,10 +9,12 @@ Although it was originally focused on Tokyo, this project now includes a way to 
 Currently there are configurations for:
 - Tokyo 
 - Geneva
+- Tokyo Ramen (pre-loaded data of ramen restaurants, provided by the Ramen DB)
 
 Check out the apps on Google Play Store:
 - Tokyo: https://play.google.com/store/apps/details?id=com.vellut.offlinemap.tokyo
 - Geneva: https://play.google.com/store/apps/details?id=com.vellut.offlinemap.geneva
+- Tokyo Ramen: https://play.google.com/store/apps/details?id=com.vellut.offlinemap.tokyoramen
 
 ## Configuration
 
@@ -21,12 +23,14 @@ Check out the apps on Google Play Store:
 - Clone the project or download a source zip.
 
 - Create a local.properties file at the root of the project. In it, define properties sdk.dir and a osmosis.dir. For example:
+
 ```    
 sdk.dir=/Applications/adt-bundle-mac-x86_64-20131030/sdk
 osmosis.dir=/Users/guilhem/Documents/libraries/osmosis
 ```
 
 - Create a sign.properties file at the root of the project. It is used to generate a release apk. It must look like this:
+
 ```
 storeFile=../../android_keystore
 storePassword=xxxxxxxx	
@@ -45,16 +49,18 @@ keyPassword=xxxxxxx
 (where config is one of the subfolders in the "configs" folder, e.g. "tokyo")
 
 - To configure the source for one of the configs, do:
+
 ```
  ./gradlew configureAndroidProject -PmapConfiguration=<config>
 ```
 
 - To build a release, do:
+
 ```
 ./gradlew aR
 ```
 
-A release apk will be creating in the build/apk folder
+A release apk will be creating in the build/apk folder.
 
 ## Customize
 
