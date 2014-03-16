@@ -11,7 +11,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.vellut.offlinemap.tokyo.R;
+import com.vellut.offlinemap.kansai.R;
 
 import java.io.File;
 import java.io.FilenameFilter;

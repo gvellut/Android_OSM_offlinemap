@@ -9,7 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 
-import com.vellut.offlinemap.tokyo.R;
+import com.vellut.offlinemap.kansai.R;
 
 public class CopyrightMapView extends MapView {
 

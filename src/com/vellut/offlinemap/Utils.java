@@ -18,7 +18,7 @@ import android.widget.Toast;
 import org.mapsforge.android.maps.overlay.ArrayItemizedOverlay;
 import org.mapsforge.android.maps.overlay.OverlayItem;
 
-import com.vellut.offlinemap.tokyo.R;
+import com.vellut.offlinemap.kansai.R;
 
 import java.io.BufferedReader;
 import java.io.IOException;

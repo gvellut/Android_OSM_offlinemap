@@ -69,7 +69,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.vellut.offlinemap.tokyo.R;
+import com.vellut.offlinemap.kansai.R;
 
 public class MainActivity extends MapActivity implements ConnectionCallbacks,
 		OnConnectionFailedListener, LocationListener, View.OnTouchListener {

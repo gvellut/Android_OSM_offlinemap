@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Tokyo Offline Map</string>
-    <string name="city_name">Tokyo</string>
+    <string name="app_name">Kansai Offline Map</string>
+    <string name="city_name">Kansai</string>
 
-	<string name="map_file_name">Tokyo.map</string>
-	<string name="initial_lat">35.682817</string>
-	<string name="initial_lon">139.74678</string>
+	<string name="map_file_name">Kansai.map</string>
+	<string name="initial_lat">35.0210700</string>
+	<string name="initial_lon">135.7538500</string>
 	<integer name="initial_zoom">14</integer>
-	<string name="ofm_file_name_for_export">tokyo</string>
+	<string name="ofm_file_name_for_export">kansai</string>
     
 </resources>

@@ -8,7 +8,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Spinner;
 
-import com.vellut.offlinemap.tokyo.R;
+import com.vellut.offlinemap.kansai.R;
 
 public class MapAnnotationEditActivity extends Activity {
 
