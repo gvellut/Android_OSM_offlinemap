@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="welcome"><![CDATA[Bienvenue sur %1$s !\n\n
+        - Pour ajouter un point, appuyez et maintenez le doigt sur la carte quelques instants. 
+        Vous pouvez alors changer le titre, les détails et la couleur du point.\n
+        - Appuyez et maintenez le doigt sur un point existant pour le changer. 
+        Vous pouvez le modifer, lui donner un icône spécial ou l\'effacer.\n
+        - Pour visualiser rapidement le contenu d\'un point, appuyer simplement dessus.]]></string>
+        
+</resources>
